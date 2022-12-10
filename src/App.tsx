@@ -2,7 +2,7 @@ import bluetooth from "./services/bluetooth/bluetooth";
 
 function App() {
   const connect = () => {
-    bluetooth.scanForProxyNodes();
+    bluetooth.initialize();
   };
 
   return (

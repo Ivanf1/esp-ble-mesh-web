@@ -11,55 +11,92 @@ interface K2Material {
 
 const ZERO = "00000000000000000000000000000000";
 
-const id64Hex = "";
-const id6Hex = "";
-
 const getAesCmac = (hexKey: string, hexMessage: string) => {
-  const key = CryptoJS.enc.Hex.parse(hexKey);
-  const message = utils.byteArrayToWordArray(utils.hexToBytes(hexMessage));
-  return CryptoJS.CMAC(key, message);
+  // const key = CryptoJS.enc.Hex.parse(hexKey);
+  // const wordArray = CryptoJS.enc.Utf8.parse(utf8Message);
+  // console.log(wordArray);
+  // console.log(CryptoJS.CMAC(key, wordArray));
+
+  // return CryptoJS.CMAC(key, wordArray);
+
+  // const key = CryptoJS.enc.Hex.parse(hexKey);
+  // const message = utils.byteArrayToWordArray(utils.hexToBytes(hexMessage));
+  const uint8ArrayKey = new Uint8Array(hex_to_bytes(hexKey));
+  const uint8ArrayMessage = new Uint8Array(hex_to_bytes(hexMessage));
+  const result = AES_CMAC.bytes(uint8ArrayMessage, uint8ArrayKey);
+  return bytes_to_hex(result);
 };
 
-// The k2 function uses a cryptographic salt, which is calculated
-// using a function which the mesh specification calls s1 using a
-// parameter value smk2
 const s1 = (M: any) => {
   return getAesCmac(ZERO, M);
 };
 
+/*
+ * Salts used in k2, k3 and k4 functions.
+ *
+ * Salt k2 is used in k2 function and derived using s1 with
+ * parameter 'smk2' in ASCII.
+ * Refer to Mesh Profile Specification 3.8.2.6.
+ *
+ * Salt k3 is used in k3 function and derived using s1 with
+ * parameter 'smk3' in ASCII.
+ * Refer to Mesh Profile Specification 3.8.2.7.
+ *
+ * Salt k4 is used in k4 function and derived using s1 with
+ * parameter 'smk4' in ASCII.
+ * Refer to Mesh Profile Specification 3.8.2.8.
+ */
 const salts = {
-  k2: s1("736d6b32"), // smk2
-  k3: s1("736d6b33"), // smk3
-  k4: s1("736d6b34"), // smk4
+  k2: s1("736d6b32"), // smk2 in ASCII
+  k3: s1("736d6b33"), // smk3 in ASCII
+  k4: s1("736d6b34"), // smk4 in ASCII
 };
 
-const k2 = (N: any, P: any): K2Material => {
-  // salts.k2 = s1("736d6b32"); // smk2
+/**
+ * The network key material derivation function k2 is used to generate instances
+ * of EncryptionKey, PrivacyKey, and NID.
+ * Refer to Mesh Profile Specification 3.8.2.6.
+ *
+ * @param {string} N NetKey.
+ * @param {string} P 1 or more octets.
+ *
+ * @returns {K2Material} k2Material
+ */
+const k2 = (N: string, P: string): K2Material => {
   // T = AES-CMACsalt (N)
   const T = getAesCmac(salts.k2.toString(), N);
   const T0 = "";
 
-  // T1 = AES-CMACt (T0 || P || 0x01)
+  // M1 = (T0 || P || 0x01)
   const M1 = T0 + P.toString() + "01";
+  // T1 = AES-CMACt (T0 || P || 0x01)
   const T1 = getAesCmac(T.toString(), M1);
 
-  // T2 = AES-CMACt (T1 || P || 0x02)
+  // M2 = (T1 || P || 0x02)
   const M2 = T1 + P.toString() + "02";
+  // T2 = AES-CMACt (T1 || P || 0x02)
   const T2 = getAesCmac(T.toString(), M2);
 
+  // M3 = (T2 || P || 0x03)
+  const M3 = T2 + P.toString() + "03";
   // T3 = AES-CMACt (T2 || P || 0x03)
-  const M3 = T2 + P.toString() + "02";
   const T3 = getAesCmac(T.toString(), M3);
 
-  // k2(N, P) = (T1 || T2 || T3) mod 2(263)
+  // T123 = (T1 || T2 || T3)
   const T123 = T1 + T2 + T3;
 
+  // 2^263
   const TOW_POW_263 = bigInt(2).pow(263);
+
+  // Transform T123 to bigInt
   const T123BigInt = bigInt(T123, 16);
 
+  // (T1 || T2 || T3) / 2^263
   const modVal = T123BigInt.divmod(TOW_POW_263);
+  // (T1 || T2 || T3) mod 2^263
   const modValBigInt = bigInt(modVal.remainder);
 
+  // k2(N, P) = (T1 || T2 || T3) mod 2^263
   const k2Hex = utils.bigIntegerToHexString(modValBigInt);
 
   const k2Material: K2Material = {
@@ -71,31 +108,63 @@ const k2 = (N: any, P: any): K2Material => {
   return k2Material;
 };
 
-const k3 = (N: any): string => {
-  // salts.k3 = s1("736d6b33"); // smk3
-
+/**
+ * Used to generate a public value of 64 bits derived from a private key.
+ * Refer to Mesh Profile Specification 3.8.2.7.
+ *
+ * @param {string} N NetKey.
+ *
+ * @returns {string} NetworkID.
+ */
+const k3 = (N: string): string => {
   // T = AES-CMACsalt (N)
   const T = getAesCmac(salts.k3.toString(), N);
 
-  // k3(N) = AES-CMACt (id64 || 0x01) mod 2^64
+  // id64
+  const id64Hex = utils.bytesToHex(utils.toAsciiCodes("id64"));
+  // AES-CMACt (id64 || 0x01)
   const k3Cmac = getAesCmac(T.toString(), id64Hex + "01");
+
+  // Transform k3Cmac to bigInt
   const k3CmacBigInt = bigInt(k3Cmac.toString(), 16);
+
+  // 2^64
   const TOW_POW_64 = bigInt(2).pow(64);
 
+  // AES-CMACt (id64 || 0x01) / 2^64
   const k3Modval = k3CmacBigInt.divmod(TOW_POW_64);
+  // AES-CMACt (id64 || 0x01) mod 2^64
   const k3ModvalBigInt = bigInt(k3Modval.remainder);
+
+  // return the NetworkID
   return utils.bigIntegerToHexString(k3ModvalBigInt);
 };
 
-// used to calculate AID field
-const k4 = (N: any): string => {
-  // K4(N) = AES-CMACt ( id6 || 0x01 ) mod 2^6
-  // salts.k4 = s1("736d6b34"); // "smk4"
+/**
+ * Used to calculate the AID field (6 bits).
+ *
+ * @param {string} N AppKey
+ *
+ * @returns {string} AID
+ */
+const k4 = (N: string): string => {
+  // T = AES-CMACsalt (N)
   const T = getAesCmac(salts.k4.toString(), N);
+
+  // id6
+  const id6Hex = utils.bytesToHex(utils.toAsciiCodes("id6"));
+
+  // AES-CMACt ( id6 || 0x01 )
   const k4Cmac = getAesCmac(T.toString(), id6Hex + "01");
+
+  // Transform k4 to bigInt
   const k4CmacBigInt = bigInt(k4Cmac.toString(), 16);
+
+  // AES-CMACt ( id6 || 0x01 ) / 2^6
   const k4Modval = k4CmacBigInt.divmod(64);
+  // K4(N) = AES-CMACt ( id6 || 0x01 ) mod 2^6
   const k4ModvalBigInt = bigInt(k4Modval.remainder);
+
   return utils.bigIntegerToHexString(k4ModvalBigInt);
 };
 

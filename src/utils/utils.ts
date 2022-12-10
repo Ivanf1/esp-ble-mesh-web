@@ -3,15 +3,15 @@ const normaliseHex = (raw: any) => {
   return value.toUpperCase();
 };
 
-const byteArrayToWordArray = (byteArray: any) => {
-  const wordArray: any[] = [];
+// const byteArrayToWordArray = (byteArray: any) => {
+//   const wordArray: any[] = [];
 
-  for (let i = 0; i < byteArray.length; i++) {
-    wordArray[(i / 4) | 0] |= byteArray[i] << (24 - 8 * i);
-  }
+//   for (let i = 0; i < byteArray.length; i++) {
+//     wordArray[(i / 4) | 0] |= byteArray[i] << (24 - 8 * i);
+//   }
 
-  return CryptoJS.lib.WordArray.create(wordArray, byteArray.length);
-};
+//   return CryptoJS.lib.WordArray.create(wordArray, byteArray.length);
+// };
 
 const hexToBytes = (hexString: string): number[] => {
   const result = [];
@@ -125,7 +125,7 @@ const leastSignificantBit = (number: number): number => {
 
 const utils = {
   normaliseHex,
-  byteArrayToWordArray,
+  // byteArrayToWordArray,
   hexToBytes,
   bytesToHex,
   bigIntegerToHexString,
