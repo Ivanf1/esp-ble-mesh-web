@@ -1,6 +1,6 @@
 import crypto from "../../utils/crypto";
 import pduBuilder, {
-  AccessPayloadInfo,
+  AccessPayloadInput,
   NetworkLayerInfo,
   UpperTransportPDUInfo,
 } from "../../utils/pduBuilder";
@@ -16,7 +16,7 @@ const configuration = {
   NID: "",
   networkId: "",
   AID: "",
-  seq: 6,
+  seq: 10,
 };
 
 const MESH_PROXY_SERVICE = "00001828-0000-1000-8000-00805f9b34fb";
@@ -35,7 +35,7 @@ const initialize = () => {
 
   configuration.ivi = utils.leastSignificantBit(parseInt(configuration.ivIndex, 16));
 
-  const accessPayloadInfo: AccessPayloadInfo = {
+  const accessPayloadInfo: AccessPayloadInput = {
     opCode: "8203",
     params: utils.toHex(configuration.seq, 2), // tid
   };

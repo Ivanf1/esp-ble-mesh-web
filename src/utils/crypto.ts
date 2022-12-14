@@ -24,15 +24,6 @@ export interface AuthenticatedEncryptedNetworkPayload {
 const ZERO = "00000000000000000000000000000000";
 
 const getAesCmac = (hexKey: string, hexMessage: string): string => {
-  // const key = CryptoJS.enc.Hex.parse(hexKey);
-  // const wordArray = CryptoJS.enc.Utf8.parse(utf8Message);
-  // console.log(wordArray);
-  // console.log(CryptoJS.CMAC(key, wordArray));
-
-  // return CryptoJS.CMAC(key, wordArray);
-
-  // const key = CryptoJS.enc.Hex.parse(hexKey);
-  // const message = utils.byteArrayToWordArray(utils.hexToBytes(hexMessage));
   const uint8ArrayKey = new Uint8Array(hex_to_bytes(hexKey));
   const uint8ArrayMessage = new Uint8Array(hex_to_bytes(hexMessage));
   const result = AES_CMAC.bytes(uint8ArrayMessage, uint8ArrayKey);
@@ -286,6 +277,8 @@ const privacyRandom = (encDst: string, encTransportPdu: string, netmic: string) 
 /**
  * Refer to Mesh Profile Specification 3.8.7.3.
  *
+ * Fields named like 'a_b_c' are result of concatenation of fields a, b and c.
+ *
  */
 const obfuscate = function (
   encDst: any,
@@ -299,40 +292,34 @@ const obfuscate = function (
   privacyKey: any
 ) {
   // Privacy Random = (EncDST || EncTransportPDU || NetMIC)[0–6]
-  const hex_privacy_random = privacyRandom(encDst, encTransportPdu, netmic);
+  const hexPrivacyRandom = privacyRandom(encDst, encTransportPdu, netmic);
 
-  var result = {
-    privacyKey: "",
-    privacyRandom: "",
+  const result = {
+    privacyKey: privacyKey,
+    privacyRandom: hexPrivacyRandom,
     pecbInput: "",
     pecb: "",
     ctl_ttl_seq_src: "",
     obfuscated_ctl_ttl_seq_src: "",
   };
 
-  result.privacyKey = privacyKey;
-  result.privacyRandom = hex_privacy_random;
-
   // Privacy Plaintext = 0x0000000000 || IV Index || Privacy Random
-  result.pecbInput = "0000000000" + ivIndex + hex_privacy_random;
+  result.pecbInput = "0000000000" + ivIndex + hexPrivacyRandom;
   // PECB = e (PrivacyKey, Privacy Plaintext)
   const pecb_hex = e(result.pecbInput, privacyKey);
-  const pecb = pecb_hex.substring(0, 12);
-  result.pecb = pecb;
+  result.pecb = pecb_hex.substring(0, 12);
 
   const ctlInt = parseInt(ctl, 16);
   const ttlInt = parseInt(ttl, 16);
   const ctlTtl = ctlInt | ttlInt;
 
-  const ctl_ttl_hex = utils.toHex(ctlTtl, 1);
+  const ctlTtlHex = utils.toHex(ctlTtl, 1);
   const paddedSeq = utils.toHex(seq, 3);
   // (CTL || TTL || SEQ || SRC)
-  const ctl_ttl_seq_src = ctl_ttl_hex + paddedSeq + src;
-
-  result.ctl_ttl_seq_src = ctl_ttl_seq_src;
+  result.ctl_ttl_seq_src = ctlTtlHex + paddedSeq + src;
 
   // ObfuscatedData = (CTL || TTL || SEQ || SRC) ⊕ PECB[0–5]
-  const obf = utils.xorU8Array(utils.hexToU8A(ctl_ttl_seq_src), utils.hexToU8A(pecb));
+  const obf = utils.xorU8Array(utils.hexToU8A(result.ctl_ttl_seq_src), utils.hexToU8A(result.pecb));
 
   result.obfuscated_ctl_ttl_seq_src = utils.u8AToHexString(obf);
 
@@ -349,6 +336,7 @@ const crypto = {
   authenticateEncryptNetworkPayload,
   obfuscate,
   e,
+  privacyRandom,
 };
 
 export default crypto;
