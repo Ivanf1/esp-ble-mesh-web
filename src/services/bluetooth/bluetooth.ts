@@ -1,15 +1,22 @@
 import crypto from "../../utils/crypto";
+import pduBuilder, {
+  AccessPayloadInfo,
+  NetworkLayerInfo,
+  UpperTransportPDUInfo,
+} from "../../utils/pduBuilder";
 import utils from "../../utils/utils";
 
 const configuration = {
   ivIndex: "00000000",
-  // netKey: "2C9C3BD30D717C1BAB6F20625A966245", //"7dd7364cd842ad18c17c2b820c84c3d6",
-  netKey: "f7a2a44f8e8a8029064f173ddc1e2b00", // from documentation sample. sec 8.1.
-  // appKey: "25170983bf8af3f02c3a44888db053ee", //"63964771734fbd76e3b40519d1d94a48",
-  appKey: "3216d1509884b533248541792b877f98", // from documentation sample. sec 8.1.
+  ivi: 0,
+  netKey: "2C9C3BD30D717C1BAB6F20625A966245",
+  appKey: "25170983bf8af3f02c3a44888db053ee",
   encryptionKey: "",
   privacyKey: "",
+  NID: "",
   networkId: "",
+  AID: "",
+  seq: 6,
 };
 
 const MESH_PROXY_SERVICE = "00001828-0000-1000-8000-00805f9b34fb";
@@ -17,7 +24,53 @@ const MESH_PROXY_DATA_IN = "00002add-0000-1000-8000-00805f9b34fb";
 const MESH_PROXY_DATA_OUT = "00002ade-0000-1000-8000-00805f9b34fb";
 
 const initialize = () => {
-  crypto.s1("smk2");
+  const k2Material = crypto.k2(configuration.netKey, "00");
+  configuration.encryptionKey = k2Material.encryptionKey;
+  configuration.privacyKey = k2Material.privacyKey;
+  configuration.NID = k2Material.NID;
+
+  configuration.networkId = crypto.k3(configuration.netKey);
+
+  configuration.AID = crypto.k4(configuration.appKey);
+
+  configuration.ivi = utils.leastSignificantBit(parseInt(configuration.ivIndex, 16));
+
+  const accessPayloadInfo: AccessPayloadInfo = {
+    opCode: "8203",
+    params: utils.toHex(configuration.seq, 2), // tid
+  };
+
+  const upperTransportPDUInfo: UpperTransportPDUInfo = {
+    appKey: configuration.appKey,
+    dst: "c000",
+    ivIndex: configuration.ivIndex,
+    seq: configuration.seq,
+    src: "0008",
+  };
+
+  const networkLayerInfo: NetworkLayerInfo = {
+    dst: "c000",
+    encryptionKey: configuration.encryptionKey,
+    ivIndex: configuration.ivIndex,
+    seq: configuration.seq,
+    src: "0008",
+    ttl: "07",
+  };
+
+  const proxyPDU = pduBuilder.makeProxyPDU(
+    accessPayloadInfo,
+    upperTransportPDUInfo,
+    networkLayerInfo,
+    configuration.AID,
+    configuration.privacyKey,
+    configuration.ivi,
+    configuration.NID
+  );
+
+  console.log(proxyPDU);
+
+  scanForProxyNodes(proxyPDU);
+  configuration.seq++;
 };
 
 const bluetooth = {
@@ -25,10 +78,14 @@ const bluetooth = {
 };
 export default bluetooth;
 
-const scanForProxyNodes = async () => {
+const scanForProxyNodes = async (proxy_pdu: string) => {
   const options = {
-    // filters: [{ services: [0x1828] }], // Mesh Proxy Service
-    filters: [{ name: "ESP-BLE-MESH" }],
+    filters: [
+      {
+        name: "ESP-BLE-MESH",
+        optionalServices: [0x1828], // Mesh Proxy Service
+      },
+    ],
   };
 
   try {
@@ -37,21 +94,35 @@ const scanForProxyNodes = async () => {
     console.log(`> device: ${device}`);
     console.log("> Name: " + device.name);
     console.log("> Id: " + device.id);
-    await connect(device);
+    await connect(device, proxy_pdu);
     console.log("> Connected: " + device.gatt?.connected);
   } catch (error) {
     console.log("ERROR: " + error);
   }
 };
 
-const connect = async (device: BluetoothDevice) => {
+const connect = async (device: BluetoothDevice, proxy_pdu: string) => {
   try {
     const server = await device.gatt?.connect();
     if (server) {
       console.log("Connected to " + server.device.id);
       device.addEventListener("gattserverdisconnected", onDisconnected);
-      if (await areMeshProxyCharacteristicsPresent(server)) {
+      const result = await getMeshProxyDataInDataOutCharacteristics(server);
+      if (result) {
         console.log("mesh characteristics are present");
+        const [dataIn, _] = result;
+        const proxy_pdu_bytes = utils.hexToBytes(proxy_pdu);
+        const proxy_pdu_data = new Uint8Array(proxy_pdu_bytes);
+        dataIn
+          .writeValue(proxy_pdu_data.buffer)
+          .then((_) => {
+            console.log("sent proxy pdu OK");
+          })
+          .catch((error) => {
+            alert("Error: " + error);
+            console.log("Error: " + error);
+            return;
+          });
       }
     }
   } catch (error) {
@@ -59,16 +130,19 @@ const connect = async (device: BluetoothDevice) => {
   }
 };
 
-const areMeshProxyCharacteristicsPresent = async (server: BluetoothRemoteGATTServer) => {
+const getMeshProxyDataInDataOutCharacteristics = async (
+  server: BluetoothRemoteGATTServer
+): Promise<BluetoothRemoteGATTCharacteristic[] | null> => {
   try {
     const proxyService = await server.getPrimaryService(MESH_PROXY_SERVICE);
     const dataIn = await proxyService.getCharacteristic(MESH_PROXY_DATA_IN);
-    await proxyService.getCharacteristic(MESH_PROXY_DATA_OUT);
+    const dataOut = await proxyService.getCharacteristic(MESH_PROXY_DATA_OUT);
     console.log("proxy characteristics found");
-    return true;
+    return [dataIn, dataOut];
   } catch (error) {
     console.log("proxy characteristics not found");
-    return false;
+    console.log(error);
+    return null;
   }
 };
 
