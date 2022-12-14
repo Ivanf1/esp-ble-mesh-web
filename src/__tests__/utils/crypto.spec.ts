@@ -64,4 +64,48 @@ describe("crypto test", () => {
 
     expect(computed).toEqual(expected);
   });
+
+  it("should compute AID successfully", () => {
+    // Refer to Mesh Profile Specification 8.2.1.
+    const N = "63964771734fbd76e3b40519d1d94a48";
+    const expected = "26";
+    const computed = crypto.k4(N);
+
+    expect(computed).toEqual(expected);
+  });
+
+  it("should compute NID, EncryptionKey, and PrivacyKey successfully", () => {
+    // Refer to Mesh Profile Specification 8.2.2.
+    const N = "7dd7364cd842ad18c17c2b820c84c3d6";
+    const P = "00";
+    const computed = crypto.k2(N, P);
+    const expected = {
+      NID: "68",
+      encryptionKey: "0953fa93e7caac9638f58820220a398e",
+      privacyKey: "8b84eedec100067d670971dd2aa700cf",
+    };
+
+    expect(computed.NID).toEqual(expected.NID);
+    expect(computed.encryptionKey).toEqual(expected.encryptionKey);
+    expect(computed.privacyKey).toEqual(expected.privacyKey);
+  });
+
+  it("should compute Network ID successfully", () => {
+    // Refer to Mesh Profile Specification 8.2.4.
+    const N = "7dd7364cd842ad18c17c2b820c84c3d6";
+    const expected = "3ecaff672f673370";
+    const computed = crypto.k3(N);
+
+    expect(computed).toEqual(expected);
+  });
+
+  it("should compute e successfully", () => {
+    const plaintext = "0000000000123456775ed1c7089019ab";
+    const key = "cc6ca17b716bcd901fa2dca274caa6f";
+
+    const expected = "a3f1ea8e4ba20277bfcadf11bc92cbaa";
+    const computed = crypto.e(plaintext, key);
+
+    expect(computed).toEqual(expected);
+  });
 });

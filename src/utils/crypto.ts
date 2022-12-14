@@ -9,9 +9,21 @@ interface K2Material {
   privacyKey: string;
 }
 
+export interface AuthenticatedEncryptedAccessPayload {
+  EncAccessPayload: string;
+  TransMIC: string;
+}
+
+export interface AuthenticatedEncryptedNetworkPayload {
+  EncryptionKey: string;
+  EncDST: string;
+  EncTransportPDU: string;
+  NetMIC: string;
+}
+
 const ZERO = "00000000000000000000000000000000";
 
-const getAesCmac = (hexKey: string, hexMessage: string) => {
+const getAesCmac = (hexKey: string, hexMessage: string): string => {
   // const key = CryptoJS.enc.Hex.parse(hexKey);
   // const wordArray = CryptoJS.enc.Utf8.parse(utf8Message);
   // console.log(wordArray);
@@ -27,7 +39,7 @@ const getAesCmac = (hexKey: string, hexMessage: string) => {
   return bytes_to_hex(result);
 };
 
-const s1 = (M: any) => {
+const s1 = (M: string) => {
   return getAesCmac(ZERO, M);
 };
 
@@ -168,14 +180,30 @@ const k4 = (N: string): string => {
   return utils.bigIntegerToHexString(k4ModvalBigInt);
 };
 
-const meshAuthEncAccessPayload = (hexAppKey: string, hexNonce: string, hexPayload: string) => {
-  const u8Key = utils.hexToU8A(hexAppKey);
-  const u8Nonce = utils.hexToU8A(hexNonce);
-  const u8Payload = utils.hexToU8A(hexPayload);
+/**
+ * Perform authentication and encryption of the Access Payload.
+ *
+ * Refer to Mesh Profile Specification 3.8.7.1.
+ *
+ * @param {string} appKey AppKey.
+ * @param {string} applicationNonce Application Nonce.
+ * @param {string} applicationPayload Application Payload.
+ *
+ * @return {Object} AuthenticatedEncryptedAccessPayload.
+ */
+const authenticateEncryptAccessPayload = (
+  appKey: string,
+  applicationNonce: string,
+  applicationPayload: string
+): AuthenticatedEncryptedAccessPayload => {
+  const u8AppKey = utils.hexToU8A(appKey);
+  const u8Nonce = utils.hexToU8A(applicationNonce);
+  const u8Payload = utils.hexToU8A(applicationPayload);
 
-  const authEncAccess = AES_CCM.encrypt(u8Payload, u8Key, u8Nonce, new Uint8Array([]), 4);
+  const authEncAccess = AES_CCM.encrypt(u8Payload, u8AppKey, u8Nonce, new Uint8Array([]), 4);
   const hex = utils.u8AToHexString(authEncAccess);
-  const result = {
+
+  const result: AuthenticatedEncryptedAccessPayload = {
     EncAccessPayload: hex.substring(0, hex.length - 8),
     TransMIC: hex.substring(hex.length - 8, hex.length),
   };
@@ -183,45 +211,71 @@ const meshAuthEncAccessPayload = (hexAppKey: string, hexNonce: string, hexPayloa
   return result;
 };
 
-const meshAuthEncNetwork = (
-  hexEncryptionKey: string,
-  hexNonce: string,
-  hexDst: string,
-  hexTransportPDU: string
-) => {
-  const arg3 = hexDst + hexTransportPDU;
-  const u8_key = utils.hexToU8A(hexEncryptionKey);
-  const u8_nonce = utils.hexToU8A(hexNonce);
-  const u8_dst_plus_transport_pdu = utils.hexToU8A(arg3);
-  const auth_enc_network = AES_CCM.encrypt(
-    u8_dst_plus_transport_pdu,
-    u8_key,
-    u8_nonce,
+/**
+ * Perform authentication and encryption of the Network Payload.
+ *
+ * Refer to Mesh Profile Specification 3.8.7.2.
+ *
+ * @param {string} encryptionKey EncryptionKey.
+ * @param {string} nonce Network nonce.
+ * @param {string} dst Destination address.
+ * @param {string} lowerTransportPDU Lower Transport PDU.
+ *
+ * @returns {Object} AuthenticatedEncryptedNetworkPayload.
+ */
+const authenticateEncryptNetworkPayload = (
+  encryptionKey: string,
+  nonce: string,
+  dst: string,
+  lowerTransportPDU: string
+): AuthenticatedEncryptedNetworkPayload => {
+  const arg3 = dst + lowerTransportPDU;
+
+  const u8key = utils.hexToU8A(encryptionKey);
+  const u8nonce = utils.hexToU8A(nonce);
+  const u8dstAndLowerTransportPDU = utils.hexToU8A(arg3);
+
+  const authenticationEncryptionResult = AES_CCM.encrypt(
+    u8dstAndLowerTransportPDU,
+    u8key,
+    u8nonce,
     new Uint8Array([]),
     4
   );
-  const hex = utils.u8AToHexString(auth_enc_network);
-  const result = {
-    Encryption_Key: hexEncryptionKey,
-    EncDST: hex.substring(0, 4),
-    EncTransportPDU: hex.substring(4, hex.length - 8),
-    NetMIC: hex.substring(hex.length - 8, hex.length),
+
+  const hexResult = utils.u8AToHexString(authenticationEncryptionResult);
+
+  const result: AuthenticatedEncryptedNetworkPayload = {
+    EncryptionKey: encryptionKey,
+    EncDST: hexResult.substring(0, 4),
+    EncTransportPDU: hexResult.substring(4, hexResult.length - 8),
+    NetMIC: hexResult.substring(hexResult.length - 8, hexResult.length),
   };
+
   return result;
 };
 
-const e = (hex_plaintext: string, hex_key: string) => {
-  let hex_padding = "";
-  let ecb_encrypted = AES_ECB.encrypt(
-    hex_to_bytes(hex_plaintext),
-    hex_to_bytes(hex_key),
-    !hex_to_bytes(hex_padding)
-  );
-  return bytes_to_hex(ecb_encrypted);
+/**
+ * Refer to Mesh Profile Specification 3.8.2.1.
+ *
+ * @param {string} plaintext
+ * @param {string} privacyKey Privacy Key.
+ */
+const e = (plaintext: string, privacyKey: string) => {
+  const ecbEncrypted = AES_ECB.encrypt(hex_to_bytes(plaintext), hex_to_bytes(privacyKey), false);
+  return bytes_to_hex(ecbEncrypted);
 };
 
-const privacyRandom = (enc_dst: string, enc_transport_pdu: string, netmic: string) => {
-  const temp = enc_dst + enc_transport_pdu + netmic;
+/**
+ * Refer to Mesh Profile Specification 3.8.7.3.
+ *
+ * @param {string} encDst
+ * @param {string} encTransportPdu
+ * @param {string} netmic
+ */
+const privacyRandom = (encDst: string, encTransportPdu: string, netmic: string) => {
+  // Privacy Random = (EncDST || EncTransportPDU || NetMIC)[0–6]
+  const temp = encDst + encTransportPdu + netmic;
   if (temp.length >= 14) {
     return temp.substring(0, 14);
   } else {
@@ -229,43 +283,59 @@ const privacyRandom = (enc_dst: string, enc_transport_pdu: string, netmic: strin
   }
 };
 
+/**
+ * Refer to Mesh Profile Specification 3.8.7.3.
+ *
+ */
 const obfuscate = function (
-  enc_dst: any,
-  enc_transport_pdu: any,
+  encDst: any,
+  encTransportPdu: any,
   netmic: any,
   ctl: any,
   ttl: any,
   seq: any,
   src: any,
-  iv_index: any,
-  privacy_key: any
+  ivIndex: any,
+  privacyKey: any
 ) {
-  //1. Create Privacy Random
-  const hex_privacy_random = privacyRandom(enc_dst, enc_transport_pdu, netmic);
+  // Privacy Random = (EncDST || EncTransportPDU || NetMIC)[0–6]
+  const hex_privacy_random = privacyRandom(encDst, encTransportPdu, netmic);
+
   var result = {
-    privacy_key: "",
-    privacy_random: "",
-    pecb_input: "",
+    privacyKey: "",
+    privacyRandom: "",
+    pecbInput: "",
     pecb: "",
     ctl_ttl_seq_src: "",
     obfuscated_ctl_ttl_seq_src: "",
   };
-  result.privacy_key = privacy_key;
-  result.privacy_random = hex_privacy_random;
-  //2. Calculate PECB
-  result.pecb_input = "0000000000" + iv_index + hex_privacy_random;
-  const pecb_hex = e(result.pecb_input, privacy_key);
+
+  result.privacyKey = privacyKey;
+  result.privacyRandom = hex_privacy_random;
+
+  // Privacy Plaintext = 0x0000000000 || IV Index || Privacy Random
+  result.pecbInput = "0000000000" + ivIndex + hex_privacy_random;
+  // PECB = e (PrivacyKey, Privacy Plaintext)
+  const pecb_hex = e(result.pecbInput, privacyKey);
   const pecb = pecb_hex.substring(0, 12);
   result.pecb = pecb;
-  const ctl_int = parseInt(ctl, 16);
-  const ttl_int = parseInt(ttl, 16);
-  const ctl_ttl = ctl_int | ttl_int;
-  const ctl_ttl_hex = utils.toHex(ctl_ttl, 1);
-  const ctl_ttl_seq_src = ctl_ttl_hex + seq + src;
+
+  const ctlInt = parseInt(ctl, 16);
+  const ttlInt = parseInt(ttl, 16);
+  const ctlTtl = ctlInt | ttlInt;
+
+  const ctl_ttl_hex = utils.toHex(ctlTtl, 1);
+  const paddedSeq = utils.toHex(seq, 3);
+  // (CTL || TTL || SEQ || SRC)
+  const ctl_ttl_seq_src = ctl_ttl_hex + paddedSeq + src;
+
   result.ctl_ttl_seq_src = ctl_ttl_seq_src;
-  // 3. Obfuscate
+
+  // ObfuscatedData = (CTL || TTL || SEQ || SRC) ⊕ PECB[0–5]
   const obf = utils.xorU8Array(utils.hexToU8A(ctl_ttl_seq_src), utils.hexToU8A(pecb));
+
   result.obfuscated_ctl_ttl_seq_src = utils.u8AToHexString(obf);
+
   return result;
 };
 
@@ -275,9 +345,10 @@ const crypto = {
   k2,
   k3,
   k4,
-  meshAuthEncAccessPayload,
-  meshAuthEncNetwork,
+  authenticateEncryptAccessPayload,
+  authenticateEncryptNetworkPayload,
   obfuscate,
+  e,
 };
 
 export default crypto;
