@@ -62,6 +62,7 @@ const makeProxyPDU = (
     src: networkLayerInfo.src,
     ivIndex: networkLayerInfo.ivIndex,
   };
+  console.log(networkLayerInfo.encryptionKey);
   const securedNetworkPDU = makeSecureNetworkLayer(securedNetworkPDUInputParams);
 
   const obfuscateNetworkPDUInputParams: ObfuscateNetworkPDUInput = {
@@ -90,7 +91,7 @@ const makeProxyPDU = (
   return proxyPDU;
 };
 
-type ProxyPDU = string;
+export type ProxyPDU = string;
 const finalizeProxyPDU = (finalizedNetworkPDU: string): ProxyPDU => {
   const sar = 0;
   const msgType = 0;

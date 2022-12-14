@@ -4,13 +4,12 @@ import crypto, {
   AuthenticatedEncryptedNetworkPayload,
 } from "../../utils/crypto";
 
-/*
- * NetKey, AppKey and all the expected data is taken from
- * section 8 Sample data of the Mesh Profile Specification v1.0.1.
- */
-
 describe("crypto test", () => {
   describe("encryption functions test", () => {
+    /*
+     * NetKey, AppKey and all the expected data is taken from
+     * section 8 Sample data of the Mesh Profile Specification v1.0.1.
+     */
     it("should compute k2 salt successfully", () => {
       // Refer to Mesh Profile Specification 8.1.3.
       const expected = "4f90480c1871bfbffd16971f4d8d10b1";

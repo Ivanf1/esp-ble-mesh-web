@@ -2,6 +2,7 @@ import crypto from "../../utils/crypto";
 import pduBuilder, {
   AccessPayloadInput,
   NetworkLayerInfo,
+  ProxyPDU,
   UpperTransportPDUInfo,
 } from "../../utils/pduBuilder";
 import utils from "../../utils/utils";
@@ -16,7 +17,7 @@ const configuration = {
   NID: "",
   networkId: "",
   AID: "",
-  seq: 10,
+  seq: 12,
 };
 
 const MESH_PROXY_SERVICE = "00001828-0000-1000-8000-00805f9b34fb";
@@ -34,10 +35,13 @@ const initialize = () => {
   configuration.AID = crypto.k4(configuration.appKey);
 
   configuration.ivi = utils.leastSignificantBit(parseInt(configuration.ivIndex, 16));
+};
 
+const makeProxyPDU = (onOff: boolean): ProxyPDU => {
+  const val = onOff ? "01" : "00";
   const accessPayloadInfo: AccessPayloadInput = {
     opCode: "8203",
-    params: utils.toHex(configuration.seq, 2), // tid
+    params: val + utils.toHex(configuration.seq, 1), // tid
   };
 
   const upperTransportPDUInfo: UpperTransportPDUInfo = {
@@ -69,16 +73,22 @@ const initialize = () => {
 
   console.log(proxyPDU);
 
-  scanForProxyNodes(proxyPDU);
-  configuration.seq++;
+  return proxyPDU;
 };
 
-const bluetooth = {
-  initialize,
+const sendProxyPDU = (proxyPDU: ProxyPDU, proxyDataIn: BluetoothRemoteGATTCharacteristic) => {
+  const proxyPDUBytes = utils.hexToBytes(proxyPDU);
+  const proxyPDUData = new Uint8Array(proxyPDUBytes);
+  try {
+    proxyDataIn.writeValue(proxyPDUData.buffer);
+    console.log("sent proxy pdu OK");
+    configuration.seq++;
+  } catch (error) {
+    console.log("Error: " + error);
+  }
 };
-export default bluetooth;
 
-const scanForProxyNodes = async (proxy_pdu: string) => {
+const scanForProxyNode = async () => {
   const options = {
     filters: [
       {
@@ -90,58 +100,34 @@ const scanForProxyNodes = async (proxy_pdu: string) => {
 
   try {
     const device = await navigator.bluetooth.requestDevice(options);
-    console.log("> Connected: " + device.gatt?.connected);
-    console.log(`> device: ${device}`);
+    console.log(`> Device: ${device}`);
     console.log("> Name: " + device.name);
     console.log("> Id: " + device.id);
-    await connect(device, proxy_pdu);
-    console.log("> Connected: " + device.gatt?.connected);
+    return device;
   } catch (error) {
     console.log("ERROR: " + error);
   }
 };
 
-const connect = async (device: BluetoothDevice, proxy_pdu: string) => {
+const connect = async (device: BluetoothDevice) => {
   try {
     const server = await device.gatt?.connect();
-    if (server) {
-      console.log("Connected to " + server.device.id);
-      device.addEventListener("gattserverdisconnected", onDisconnected);
-      const result = await getMeshProxyDataInDataOutCharacteristics(server);
-      if (result) {
-        console.log("mesh characteristics are present");
-        const [dataIn, _] = result;
-        const proxy_pdu_bytes = utils.hexToBytes(proxy_pdu);
-        const proxy_pdu_data = new Uint8Array(proxy_pdu_bytes);
-        dataIn
-          .writeValue(proxy_pdu_data.buffer)
-          .then((_) => {
-            console.log("sent proxy pdu OK");
-          })
-          .catch((error) => {
-            alert("Error: " + error);
-            console.log("Error: " + error);
-            return;
-          });
-      }
-    }
+    // Avoid returning undefined
+    return server ? server : null;
   } catch (error) {
     console.log("ERROR: could not connect - " + error);
   }
+  return null;
 };
 
-const getMeshProxyDataInDataOutCharacteristics = async (
-  server: BluetoothRemoteGATTServer
-): Promise<BluetoothRemoteGATTCharacteristic[] | null> => {
+const getMeshProxyDataInDataOutCharacteristics = async (server: BluetoothRemoteGATTServer) => {
   try {
     const proxyService = await server.getPrimaryService(MESH_PROXY_SERVICE);
     const dataIn = await proxyService.getCharacteristic(MESH_PROXY_DATA_IN);
     const dataOut = await proxyService.getCharacteristic(MESH_PROXY_DATA_OUT);
-    console.log("proxy characteristics found");
     return [dataIn, dataOut];
   } catch (error) {
-    console.log("proxy characteristics not found");
-    console.log(error);
+    console.log("proxy characteristics not found, error: " + error);
     return null;
   }
 };
@@ -149,3 +135,14 @@ const getMeshProxyDataInDataOutCharacteristics = async (
 const onDisconnected = () => {
   console.log("disconnected");
 };
+
+const bluetooth = {
+  initialize,
+  connect,
+  getMeshProxyDataInDataOutCharacteristics,
+  scanForProxyNode,
+  makeProxyPDU,
+  sendProxyPDU,
+};
+
+export default bluetooth;
