@@ -48,7 +48,7 @@ const toAsciiCodes = (text: any) => {
   return bytes;
 };
 
-const toHex = (number: number, octets: any): string => {
+const toHexDated = (number: number, octets: any): string => {
   let hex = ("0" + Number(number).toString(16)).toUpperCase();
 
   if (hex.length % 2 == 1) {
@@ -63,6 +63,22 @@ const toHex = (number: number, octets: any): string => {
     }
   } else if (octet_count > octets) {
     // hex = hex.substring((octet_count - octets) * 2, hex_chars.length);
+  }
+
+  return hex;
+};
+
+const toHex = (intNumber: number, octets: number): string => {
+  let hex = Number(intNumber).toString(16);
+
+  if (hex.length % 2 == 1) {
+    hex = "0" + hex;
+  }
+
+  const octetCount = hex.length / 2;
+  const paddingOctetsToAdd = octets - octetCount;
+  for (let i = 0; i < paddingOctetsToAdd; i++) {
+    hex = "00" + hex;
   }
 
   return hex;
@@ -130,6 +146,7 @@ const utils = {
   bytesToHex,
   bigIntegerToHexString,
   toAsciiCodes,
+  toHexDated,
   toHex,
   hexToU8A,
   u8AToHexString,
