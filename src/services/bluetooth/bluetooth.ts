@@ -89,13 +89,9 @@ const sendProxyPDU = (proxyPDU: ProxyPDU, proxyDataIn: BluetoothRemoteGATTCharac
 };
 
 const scanForProxyNode = async () => {
-  const options = {
-    filters: [
-      {
-        name: "ESP-BLE-MESH",
-        optionalServices: [0x1828], // Mesh Proxy Service
-      },
-    ],
+  const options: RequestDeviceOptions = {
+    acceptAllDevices: true,
+    optionalServices: [0x1828],
   };
 
   try {
