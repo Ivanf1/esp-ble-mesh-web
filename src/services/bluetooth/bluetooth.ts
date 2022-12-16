@@ -1,3 +1,9 @@
+import {
+  MESH_PROXY_DATA_IN,
+  MESH_PROXY_DATA_OUT,
+  MESH_PROXY_SERVICE,
+} from "../../constants/bluetooth";
+import { LOCAL_STORAGE_SEQ_KEY } from "../../constants/storageKeys";
 import crypto from "../../utils/crypto";
 import pduBuilder, {
   AccessPayloadInput,
@@ -6,6 +12,15 @@ import pduBuilder, {
   UpperTransportPDUInfo,
 } from "../../utils/pduBuilder";
 import utils from "../../utils/utils";
+
+const getSequenceNumberFromLocalStorage = () => {
+  const seq = localStorage.getItem(LOCAL_STORAGE_SEQ_KEY);
+  return seq ? JSON.parse(seq) : 0;
+};
+
+const updateSequenceNumberInLocalStorage = (seq: number) => {
+  localStorage.setItem(LOCAL_STORAGE_SEQ_KEY, JSON.stringify(seq));
+};
 
 const configuration = {
   ivIndex: "00000000",
@@ -17,12 +32,8 @@ const configuration = {
   NID: "",
   networkId: "",
   AID: "",
-  seq: 12,
+  seq: getSequenceNumberFromLocalStorage(),
 };
-
-const MESH_PROXY_SERVICE = "00001828-0000-1000-8000-00805f9b34fb";
-const MESH_PROXY_DATA_IN = "00002add-0000-1000-8000-00805f9b34fb";
-const MESH_PROXY_DATA_OUT = "00002ade-0000-1000-8000-00805f9b34fb";
 
 const initialize = () => {
   const k2Material = crypto.k2(configuration.netKey, "00");
@@ -83,6 +94,7 @@ const sendProxyPDU = (proxyPDU: ProxyPDU, proxyDataIn: BluetoothRemoteGATTCharac
     proxyDataIn.writeValue(proxyPDUData.buffer);
     console.log("sent proxy pdu OK");
     configuration.seq++;
+    updateSequenceNumberInLocalStorage(configuration.seq);
   } catch (error) {
     console.log("Error: " + error);
   }
@@ -90,8 +102,12 @@ const sendProxyPDU = (proxyPDU: ProxyPDU, proxyDataIn: BluetoothRemoteGATTCharac
 
 const scanForProxyNode = async () => {
   const options: RequestDeviceOptions = {
-    acceptAllDevices: true,
-    optionalServices: [0x1828],
+    filters: [
+      {
+        name: "ESP-BLE-MESH",
+      },
+    ],
+    optionalServices: [0x1828], // Required to access service later.
   };
 
   try {
