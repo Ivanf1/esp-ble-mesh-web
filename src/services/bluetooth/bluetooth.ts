@@ -144,10 +144,6 @@ const getMeshProxyDataInDataOutCharacteristics = async (server: BluetoothRemoteG
   }
 };
 
-const onDisconnected = () => {
-  console.log("disconnected");
-};
-
 const bluetooth = {
   initialize,
   connect,
