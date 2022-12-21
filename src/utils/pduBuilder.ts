@@ -62,7 +62,6 @@ const makeProxyPDU = (
     src: networkLayerInfo.src,
     ivIndex: networkLayerInfo.ivIndex,
   };
-  console.log(networkLayerInfo.encryptionKey);
   const securedNetworkPDU = makeSecureNetworkLayer(securedNetworkPDUInputParams);
 
   const obfuscateNetworkPDUInputParams: ObfuscateNetworkPDUInput = {

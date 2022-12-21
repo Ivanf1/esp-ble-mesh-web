@@ -107,6 +107,11 @@ const leastSignificantBit = (number: number): number => {
   return number & 1;
 };
 
+const U8ArrayToInt = (array: Uint8Array) => {
+  const view = new DataView(array.buffer, 0);
+  return view.getUint32(0, true);
+};
+
 const utils = {
   hexToBytes,
   bytesToHex,
@@ -118,6 +123,7 @@ const utils = {
   intToHex,
   xorU8Array,
   leastSignificantBit,
+  U8ArrayToInt,
 };
 
 export default utils;

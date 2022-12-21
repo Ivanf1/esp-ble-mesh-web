@@ -211,4 +211,29 @@ describe("crypto test", () => {
       expect(computed.obfuscated_ctl_ttl_seq_src).toEqual(expected.obfuscated_ctl_ttl_seq_src);
     });
   });
+
+  describe("payload decryption and deobfuscation test", () => {
+    it("should deobfuscate network header correctly", () => {
+      const obfuscatedData = "188d84aa2ff8";
+      const privacyRandom = "64c1e3fa2f660b";
+      const ivIndex = "00000000";
+      const privacyKey = "fc3d6584ce3c2dbae671c44a8e76158a";
+
+      const expected = {
+        privacyKey: privacyKey,
+        privacyRandom: privacyRandom,
+        pecbInput: "00000000000000000064c1e3fa2f660b",
+        pecb: "1f8d84ac2ff0",
+        ctl_ttl_seq_src: "070000060008",
+      };
+
+      const computed = crypto.deobfuscate(obfuscatedData, privacyRandom, ivIndex, privacyKey);
+
+      expect(computed.privacyKey).toEqual(expected.privacyKey);
+      expect(computed.privacyRandom).toEqual(expected.privacyRandom);
+      expect(computed.pecbInput).toEqual(expected.pecbInput);
+      expect(computed.pecb).toEqual(expected.pecb);
+      expect(computed.ctl_ttl_seq_src).toEqual(expected.ctl_ttl_seq_src);
+    });
+  });
 });

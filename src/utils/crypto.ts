@@ -326,6 +326,50 @@ const obfuscate = function (
   return result;
 };
 
+/**
+ * Refer to Mesh Profile Specification 3.8.7.
+ */
+const deobfuscate = (
+  obfuscatedData: string,
+  privacyRandom: string,
+  ivIndex: string,
+  privacyKey: string
+) => {
+  const result = {
+    privacyKey: privacyKey,
+    privacyRandom: privacyRandom,
+    pecbInput: "",
+    pecb: "",
+    ctl_ttl_seq_src: "",
+  };
+  // Privacy Plaintext = 0x0000000000 || IV Index || Privacy Random
+  result.pecbInput = "0000000000" + ivIndex + privacyRandom;
+  const pecb_hex = e(result.pecbInput, privacyKey);
+  result.pecb = pecb_hex.substring(0, 12);
+
+  // DeobfuscatedData = ObfuscatedData ⊕ PECB[0–5]
+  const deobf = utils.xorU8Array(utils.hexToU8A(obfuscatedData), utils.hexToU8A(result.pecb));
+  result.ctl_ttl_seq_src = utils.u8AToHexString(deobf);
+
+  return result;
+};
+
+const decryptAndVerify = (key: string, cipher: string, nonce: string) => {
+  try {
+    const decrypted = AES_CCM.decrypt(
+      utils.hexToU8A(cipher),
+      utils.hexToU8A(key),
+      utils.hexToU8A(nonce),
+      new Uint8Array([]),
+      4
+    );
+    return utils.u8AToHexString(decrypted);
+  } catch (error) {
+    console.log(`Error while decrypting payload: ${error}`);
+    return null;
+  }
+};
+
 const crypto = {
   getAesCmac,
   s1,
@@ -335,8 +379,10 @@ const crypto = {
   authenticateEncryptAccessPayload,
   authenticateEncryptNetworkPayload,
   obfuscate,
+  deobfuscate,
   e,
   privacyRandom,
+  decryptAndVerify,
 };
 
 export default crypto;

@@ -11,6 +11,7 @@ import pduBuilder, {
   ProxyPDU,
   UpperTransportPDUInfo,
 } from "../../utils/pduBuilder";
+import pduParser from "../../utils/pduParsers";
 import utils from "../../utils/utils";
 
 const getSequenceNumberFromLocalStorage = () => {
