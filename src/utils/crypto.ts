@@ -180,7 +180,7 @@ const k4 = (N: string): string => {
  * @param {string} applicationNonce Application Nonce.
  * @param {string} applicationPayload Application Payload.
  *
- * @return {Object} AuthenticatedEncryptedAccessPayload.
+ * @return {AuthenticatedEncryptedAccessPayload} AuthenticatedEncryptedAccessPayload.
  */
 const authenticateEncryptAccessPayload = (
   appKey: string,
@@ -212,7 +212,7 @@ const authenticateEncryptAccessPayload = (
  * @param {string} dst Destination address.
  * @param {string} lowerTransportPDU Lower Transport PDU.
  *
- * @returns {Object} AuthenticatedEncryptedNetworkPayload.
+ * @returns {AuthenticatedEncryptedNetworkPayload} AuthenticatedEncryptedNetworkPayload.
  */
 const authenticateEncryptNetworkPayload = (
   encryptionKey: string,

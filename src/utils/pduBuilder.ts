@@ -204,7 +204,7 @@ interface LowerTransportPDUInput {
  * | SEG | AKF | AID | Upper Transport Access PDU |
  * | 1 octet         |                            |
  *
- * @param {Object} LowerTransportPDUInput
+ * @param {LowerTransportPDUInput} LowerTransportPDUInput
  *
  * @returns {string} Lower Transport PDU.
  */
@@ -267,9 +267,9 @@ interface UpperTransportPDUInput {
  * The upper transport PDU consists of an encrypted version of the access payload and a message
  * authentication code called the TransMIC field.
  *
- * @param {Object} UpperTransportPDUInput
+ * @param {UpperTransportPDUInput} UpperTransportPDUInput
  *
- * @returns {Object} AuthenticatedEncryptedAccessPayload
+ * @returns {AuthenticatedEncryptedAccessPayload} AuthenticatedEncryptedAccessPayload
  */
 const makeUpperTransportPDU = ({
   seq,
