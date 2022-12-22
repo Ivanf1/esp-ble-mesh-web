@@ -1,3 +1,5 @@
 export const MESH_PROXY_SERVICE = "00001828-0000-1000-8000-00805f9b34fb";
 export const MESH_PROXY_DATA_IN = "00002add-0000-1000-8000-00805f9b34fb";
 export const MESH_PROXY_DATA_OUT = "00002ade-0000-1000-8000-00805f9b34fb";
+
+export const CONFIGURATION_API = "http://localhost:3000/config";

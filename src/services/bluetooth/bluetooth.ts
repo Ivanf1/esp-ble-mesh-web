@@ -1,4 +1,5 @@
 import {
+  CONFIGURATION_API,
   MESH_PROXY_DATA_IN,
   MESH_PROXY_DATA_OUT,
   MESH_PROXY_SERVICE,
@@ -13,6 +14,7 @@ import pduBuilder, {
 } from "../../utils/pduBuilder";
 import pduParser, { ParsedProxyPDU } from "../../utils/pduParsers";
 import utils from "../../utils/utils";
+import { MeshNetworkConfiguration } from "./meshConfiguration.interface";
 
 const getSequenceNumberFromLocalStorage = () => {
   const seq = localStorage.getItem(LOCAL_STORAGE_SEQ_KEY);
@@ -24,10 +26,10 @@ const updateSequenceNumberInLocalStorage = (seq: number) => {
 };
 
 const configuration = {
-  ivIndex: "00000000",
+  ivIndex: "",
   ivi: 0,
-  netKey: "2C9C3BD30D717C1BAB6F20625A966245",
-  appKey: "25170983bf8af3f02c3a44888db053ee",
+  netKey: "",
+  appKey: "",
   encryptionKey: "",
   privacyKey: "",
   NID: "",
@@ -36,7 +38,15 @@ const configuration = {
   seq: getSequenceNumberFromLocalStorage(),
 };
 
-const initialize = () => {
+const initialize = async () => {
+  const data = await retrieveConfiguration();
+  console.log(data);
+
+  configuration.netKey = data.netKeys[0].key;
+  configuration.appKey = data.appKeys[0].key;
+  configuration.ivIndex = utils.toHex(data.networkExclusions[0].ivIndex, 4);
+  configuration.ivi = utils.leastSignificantBit(parseInt(configuration.ivIndex, 16));
+
   const k2Material = crypto.k2(configuration.netKey, "00");
   configuration.encryptionKey = k2Material.encryptionKey;
   configuration.privacyKey = k2Material.privacyKey;
@@ -45,8 +55,12 @@ const initialize = () => {
   configuration.networkId = crypto.k3(configuration.netKey);
 
   configuration.AID = crypto.k4(configuration.appKey);
+};
 
-  configuration.ivi = utils.leastSignificantBit(parseInt(configuration.ivIndex, 16));
+const retrieveConfiguration = async () => {
+  const response = await fetch(`${CONFIGURATION_API}?id=1`);
+  const data = await response.json();
+  return data.config as MeshNetworkConfiguration;
 };
 
 const makeProxyPDU = (onOff: boolean): ProxyPDU => {
