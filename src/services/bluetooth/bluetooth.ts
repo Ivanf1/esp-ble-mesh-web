@@ -11,7 +11,7 @@ import pduBuilder, {
   ProxyPDU,
   UpperTransportPDUInfo,
 } from "../../utils/pduBuilder";
-import pduParser from "../../utils/pduParsers";
+import pduParser, { ParsedProxyPDU } from "../../utils/pduParsers";
 import utils from "../../utils/utils";
 
 const getSequenceNumberFromLocalStorage = () => {
@@ -52,7 +52,7 @@ const initialize = () => {
 const makeProxyPDU = (onOff: boolean): ProxyPDU => {
   const val = onOff ? "01" : "00";
   const accessPayloadInfo: AccessPayloadInput = {
-    opCode: "8203",
+    opCode: "8202",
     params: val + utils.toHex(configuration.seq, 1), // tid
   };
 
@@ -101,6 +101,34 @@ const sendProxyPDU = (proxyPDU: ProxyPDU, proxyDataIn: BluetoothRemoteGATTCharac
   }
 };
 
+const registerProxyPDUNotificationCallback = async (
+  proxyDataOut: BluetoothRemoteGATTCharacteristic,
+  callback: (parsedProxyPDU: ParsedProxyPDU) => void
+) => {
+  await proxyDataOut.startNotifications();
+  proxyDataOut.addEventListener("characteristicvaluechanged", (e: Event) => {
+    const parsedPDU = parseReceivedProxyPDU(e);
+    if (parsedPDU) {
+      callback(parsedPDU);
+    }
+  });
+};
+
+const parseReceivedProxyPDU = (e: Event) => {
+  if (e.target) {
+    const value = (e.target as BluetoothRemoteGATTCharacteristic).value;
+    if (value) {
+      return pduParser.validatePDU(
+        new Uint8Array(value.buffer),
+        configuration.privacyKey,
+        configuration.NID,
+        configuration.encryptionKey,
+        configuration.appKey
+      );
+    }
+  }
+};
+
 const scanForProxyNode = async () => {
   const options: RequestDeviceOptions = {
     filters: [
@@ -108,7 +136,7 @@ const scanForProxyNode = async () => {
         name: "ESP-BLE-MESH",
       },
     ],
-    optionalServices: [0x1828], // Required to access service later.
+    optionalServices: [MESH_PROXY_SERVICE], // Required to access service later.
   };
 
   try {
@@ -152,6 +180,7 @@ const bluetooth = {
   scanForProxyNode,
   makeProxyPDU,
   sendProxyPDU,
+  registerProxyPDUNotificationCallback,
 };
 
 export default bluetooth;

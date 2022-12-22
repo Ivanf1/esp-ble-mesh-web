@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import bluetooth from "./services/bluetooth/bluetooth";
+import { ParsedProxyPDU } from "./utils/pduParsers";
 
 bluetooth.initialize();
 
@@ -7,6 +8,7 @@ function App() {
   const [dataIn, setDataIn] = useState<BluetoothRemoteGATTCharacteristic | null>(null);
   const [currentDevice, setCurrentDevice] = useState<BluetoothDevice | null>(null);
   const connectionButtonRef = useRef<HTMLButtonElement | null>(null);
+  const ledStatusRef = useRef<HTMLParagraphElement | null>(null);
 
   const handleConnection = async () => {
     if (currentDevice) {
@@ -25,15 +27,24 @@ function App() {
 
         if (result) {
           console.log("proxy characteristics found");
-          const [dataIn, _] = result;
+          const [dataIn, dataOut] = result;
           setCurrentDevice(device);
           setDataIn(dataIn);
+          bluetooth.registerProxyPDUNotificationCallback(dataOut, onProxyMessageReceived);
           device.addEventListener("gattserverdisconnected", onDisconnected);
           if (connectionButtonRef.current) {
             connectionButtonRef.current.innerHTML = "disconnect";
           }
         }
       }
+    }
+  };
+
+  const onProxyMessageReceived = (proxyPDU: ParsedProxyPDU) => {
+    console.log(proxyPDU);
+    if (ledStatusRef.current) {
+      const paramsInt = parseInt(proxyPDU.params);
+      ledStatusRef.current.innerHTML = paramsInt ? "ON" : "OFF";
     }
   };
 
@@ -73,6 +84,7 @@ function App() {
         >
           off
         </button>
+        <p ref={ledStatusRef}></p>
       </div>
     </div>
   );

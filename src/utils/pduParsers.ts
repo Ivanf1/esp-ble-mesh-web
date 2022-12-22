@@ -1,6 +1,11 @@
 import crypto from "./crypto";
 import utils from "./utils";
 
+export interface ParsedProxyPDU {
+  src: string;
+  opcode: string;
+  params: string;
+}
 const validatePDU = (
   pdu: Uint8Array,
   privacyKey: string,
@@ -248,35 +253,13 @@ const validatePDU = (
     return;
   }
 
-  const opcode = accessPayloadData.opcode;
-  const params = accessPayloadData.params;
+  const parsedProxyPDU: ParsedProxyPDU = {
+    src: srcPdu,
+    opcode: accessPayloadData.opcode,
+    params: accessPayloadData.params,
+  };
 
-  console.log(" ");
-  console.log("----------");
-  console.log("Proxy PDU");
-  console.log("  SAR=" + utils.intToHex(sar));
-  console.log("  MESSAGE TYPE=" + utils.intToHex(messageType));
-  console.log("  NETWORK PDU");
-  console.log("    IVI=" + ivIndexPdu);
-  console.log("    NID=" + nidPdu);
-  console.log("    CTL=" + utils.intToHex(ctlInt));
-  console.log("    TTL=" + utils.intToHex(ttlInt));
-  console.log("    SEQ=" + seqPdu);
-  console.log("    SRC=" + srcPdu);
-  console.log("    DST=" + dstPdu);
-  console.log("    Lower Transport PDU");
-  console.log("      SEG=" + utils.intToHex(segInt));
-  console.log("      AKF=" + utils.intToHex(akfInt));
-  console.log("      AID=" + utils.intToHex(aidInt));
-  console.log("      Upper Transport PDU");
-  console.log("        Access Payload");
-  console.log("          opcode=" + opcode);
-  if (accessPayloadData.companyCode) {
-    console.log("          company_code=" + accessPayloadData.companyCode);
-  }
-  console.log("          params=" + params);
-  console.log("        TransMIC=" + transMic);
-  console.log("    NetMIC=" + netMic);
+  return parsedProxyPDU;
 };
 
 interface AccessPayloadData {
