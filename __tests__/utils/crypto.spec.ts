@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import crypto, {
   AuthenticatedEncryptedAccessPayload,
   AuthenticatedEncryptedNetworkPayload,
-} from "../../utils/crypto";
+} from "../../src/bluetooth/crypto";
 
 describe("crypto test", () => {
   describe("encryption functions test", () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import pduBuilder from "../../utils/pduBuilder";
+import pduBuilder from "../../src/bluetooth/pduBuilder";
 
 describe("PDU builder test", () => {
   describe("access payload test", () => {

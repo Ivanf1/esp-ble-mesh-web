@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
-import bluetooth from "./services/bluetooth/bluetooth";
-import { ParsedProxyPDU } from "./utils/pduParsers";
+import bluetooth from "./bluetooth/bluetooth";
+import { ParsedProxyPDU } from "./bluetooth/pduParser";
 
 bluetooth.initialize();
 

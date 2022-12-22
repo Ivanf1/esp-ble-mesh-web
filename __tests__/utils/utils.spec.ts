@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import utils from "../../utils/utils";
+import utils from "../../src/utils/utils";
 
 describe("utils test", () => {
   describe("toHex test", () => {

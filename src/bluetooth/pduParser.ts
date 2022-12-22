@@ -1,5 +1,5 @@
 import crypto from "./crypto";
-import utils from "./utils";
+import utils from "../utils/utils";
 
 export interface ParsedProxyPDU {
   src: string;

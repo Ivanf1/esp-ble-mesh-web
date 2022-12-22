@@ -1,7 +1,7 @@
 import { AES_CCM, AES_CMAC, AES_ECB } from "asmcrypto.js";
 import { bytes_to_hex, hex_to_bytes } from "asmcrypto.js/dist_es8/other/utils";
 import bigInt from "big-integer";
-import utils from "./utils";
+import utils from "../utils/utils";
 
 interface K2Material {
   NID: string;

@@ -3,17 +3,17 @@ import {
   MESH_PROXY_DATA_IN,
   MESH_PROXY_DATA_OUT,
   MESH_PROXY_SERVICE,
-} from "../../constants/bluetooth";
-import { LOCAL_STORAGE_SEQ_KEY } from "../../constants/storageKeys";
-import crypto from "../../utils/crypto";
+} from "../constants/bluetooth";
+import { LOCAL_STORAGE_SEQ_KEY } from "../constants/storageKeys";
+import crypto from "./crypto";
 import pduBuilder, {
   AccessPayloadInput,
   NetworkLayerInfo,
   ProxyPDU,
   UpperTransportPDUInfo,
-} from "../../utils/pduBuilder";
-import pduParser, { ParsedProxyPDU } from "../../utils/pduParsers";
-import utils from "../../utils/utils";
+} from "./pduBuilder";
+import pduParser, { ParsedProxyPDU } from "./pduParser";
+import utils from "../utils/utils";
 import { MeshNetworkConfiguration } from "./meshConfiguration.interface";
 
 const getSequenceNumberFromLocalStorage = () => {

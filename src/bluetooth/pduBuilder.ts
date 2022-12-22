@@ -2,7 +2,7 @@ import crypto, {
   AuthenticatedEncryptedAccessPayload,
   AuthenticatedEncryptedNetworkPayload,
 } from "./crypto";
-import utils from "./utils";
+import utils from "../utils/utils";
 
 export interface AccessPayloadInput {
   opCode: string;
