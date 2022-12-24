@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import bluetooth from "./bluetooth/bluetooth";
+import bluetooth, { OpCode } from "./bluetooth/bluetooth";
 import { ParsedProxyPDU } from "./bluetooth/pduParser";
 
 bluetooth.initialize();
@@ -50,7 +50,7 @@ function App() {
 
   const sendMessage = (onOff: boolean) => {
     if (!dataIn) return;
-    const proxyPDU = bluetooth.makeProxyPDU(onOff);
+    const proxyPDU = bluetooth.makeProxyPDU(OpCode.ONOFF_SET_ACK, onOff ? "01" : "00", "0010");
     bluetooth.sendProxyPDU(proxyPDU, dataIn!);
   };
 

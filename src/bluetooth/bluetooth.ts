@@ -16,6 +16,12 @@ import pduParser, { ParsedProxyPDU } from "./pduParser";
 import utils from "../utils/utils";
 import { MeshNetworkConfiguration } from "./meshConfiguration.interface";
 
+export enum OpCode {
+  ONOFF_SET_ACK = "8202",
+  ONOFF_SET_UNACK = "8203",
+  SENSOR_GET = "8231",
+}
+
 const getSequenceNumberFromLocalStorage = () => {
   const seq = localStorage.getItem(LOCAL_STORAGE_SEQ_KEY);
   return seq ? JSON.parse(seq) : 0;
@@ -63,23 +69,22 @@ const retrieveConfiguration = async () => {
   return data.config as MeshNetworkConfiguration;
 };
 
-const makeProxyPDU = (onOff: boolean): ProxyPDU => {
-  const val = onOff ? "01" : "00";
+const makeProxyPDU = (opcode: OpCode, params: string, dst: string): ProxyPDU => {
   const accessPayloadInfo: AccessPayloadInput = {
-    opCode: "8202",
-    params: val + utils.toHex(configuration.seq, 1), // tid
+    opCode: opcode,
+    params: params.length != 0 ? params + utils.toHex(configuration.seq, 1) : params,
   };
 
   const upperTransportPDUInfo: UpperTransportPDUInfo = {
     appKey: configuration.appKey,
-    dst: "c000",
+    dst: dst,
     ivIndex: configuration.ivIndex,
     seq: configuration.seq,
     src: "0008",
   };
 
   const networkLayerInfo: NetworkLayerInfo = {
-    dst: "c000",
+    dst: dst,
     encryptionKey: configuration.encryptionKey,
     ivIndex: configuration.ivIndex,
     seq: configuration.seq,
