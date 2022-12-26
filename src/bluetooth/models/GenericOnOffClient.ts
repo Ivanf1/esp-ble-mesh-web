@@ -14,7 +14,7 @@ enum OpCode {
   SET = "8202",
   SET_UNACK = "8203",
 }
-interface GenericOnOffClientConfiguration {
+interface GenericOnOffClientProps {
   ivIndex: string;
   netKey: string;
   appKey: string;
@@ -40,7 +40,7 @@ class GenericOnOffClient {
   private NID: string = "";
   private AID: string = "";
 
-  constructor(configuration: GenericOnOffClientConfiguration) {
+  constructor(configuration: GenericOnOffClientProps) {
     this.ivIndex = configuration.ivIndex;
     this.appKey = configuration.appKey;
     this.src = configuration.src;
