@@ -44,9 +44,13 @@ const toHex = (intNumber: number, octets: number): string => {
   }
 
   const octetCount = hex.length / 2;
-  const paddingOctetsToAdd = octets - octetCount;
-  for (let i = 0; i < paddingOctetsToAdd; i++) {
-    hex = "00" + hex;
+  if (octetCount < octets) {
+    const paddingOctetsToAdd = octets - octetCount;
+    for (let i = 0; i < paddingOctetsToAdd; i++) {
+      hex = "00" + hex;
+    }
+  } else if (octetCount > octets) {
+    hex = hex.substring(hex.length - 2);
   }
 
   return hex;
