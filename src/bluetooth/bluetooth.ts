@@ -15,6 +15,7 @@ import pduBuilder, {
 import pduParser, { ParsedProxyPDU } from "./pduParser";
 import utils from "../utils/utils";
 import { MeshNetworkConfiguration } from "./meshConfiguration.interface";
+import ProxyConfiguration from "./models/ProxyConfiguartion";
 
 export enum OpCode {
   ONOFF_SET_ACK = "8202",
@@ -92,15 +93,23 @@ const makeProxyPDU = (opcode: OpCode, params: string, dst: string): ProxyPDU => 
     ttl: "07",
   };
 
-  const proxyPDU = pduBuilder.makeProxyPDU(
-    accessPayloadInfo,
-    upperTransportPDUInfo,
+  const proxyPDU = ProxyConfiguration.makePDU(
+    { opCode: "00", params: "01" },
     networkLayerInfo,
-    configuration.AID,
     configuration.privacyKey,
     configuration.ivi,
     configuration.NID
   );
+
+  // const proxyPDU = pduBuilder.makeProxyPDU(
+  //   accessPayloadInfo,
+  //   upperTransportPDUInfo,
+  //   networkLayerInfo,
+  //   configuration.AID,
+  //   configuration.privacyKey,
+  //   configuration.ivi,
+  //   configuration.NID
+  // );
 
   console.log(proxyPDU);
 

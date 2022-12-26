@@ -37,7 +37,7 @@ const makeProxyPDU = (
 ): ProxyPDU => {
   const accessPayload = makeAccessPayload(accessPayloadInfo.opCode, accessPayloadInfo.params);
 
-  const upperTransportPDUInputParams: UpperTransportPDUInput = {
+  const upperTransportPDUInputParams: MakeUpperTransportPDUParams = {
     seq: upperTransportPDUInfo.seq,
     src: upperTransportPDUInfo.src,
     dst: upperTransportPDUInfo.dst,
@@ -47,20 +47,22 @@ const makeProxyPDU = (
   };
   const upperTransportPDU = makeUpperTransportPDU(upperTransportPDUInputParams);
 
-  const lowerTransportPDUInputParams: LowerTransportPDUInput = {
+  const lowerTransportPDUInputParams: MakeLowerTransportPDUParams = {
     AID,
     upperTransportPDU,
   };
   const lowerTransportPDU = makeLowerTransportPDU(lowerTransportPDUInputParams);
 
-  const securedNetworkPDUInputParams: SecureNetworkLayerInput = {
+  const securedNetworkPDUInputParams: MakeSecureNetworkLayerParams = {
     encryptionKey: networkLayerInfo.encryptionKey,
     dst: networkLayerInfo.dst,
     lowerTransportPDU,
+    ctl: "0",
     ttl: networkLayerInfo.ttl,
     seq: networkLayerInfo.seq,
     src: networkLayerInfo.src,
     ivIndex: networkLayerInfo.ivIndex,
+    nonceType: "network",
   };
   const securedNetworkPDU = makeSecureNetworkLayer(securedNetworkPDUInputParams);
 
@@ -85,24 +87,27 @@ const makeProxyPDU = (
   };
   const finalizedNetworkPDU = finalizeNetworkPDU(finalizedNetworkPDUInputParams);
 
-  const proxyPDU = finalizeProxyPDU(finalizedNetworkPDU);
+  const proxyPDU = finalizeProxyPDU(finalizedNetworkPDU, MessageType.NETWORK_PDU);
 
   return proxyPDU;
 };
 
 export type ProxyPDU = string;
-const finalizeProxyPDU = (finalizedNetworkPDU: string): ProxyPDU => {
+export enum MessageType {
+  NETWORK_PDU = 0,
+  PROXY_CONFIGURATION = 2,
+}
+const finalizeProxyPDU = (finalizedNetworkPDU: string, messageType: MessageType): ProxyPDU => {
+  // No segmentation
   const sar = 0;
-  const msgType = 0;
-  const sm = (sar << 6) | msgType;
+  const sm = (sar << 6) | messageType;
 
   let proxyPDU = "" + utils.intToHex(sm);
-  proxyPDU = proxyPDU + finalizedNetworkPDU;
 
-  return proxyPDU;
+  return proxyPDU + finalizedNetworkPDU;
 };
 
-interface FinalizeNetworkPDUInput {
+export interface FinalizeNetworkPDUInput {
   ivi: number;
   nid: string;
   obfuscated_ctl_ttl_seq_src: string;
@@ -126,7 +131,7 @@ const finalizeNetworkPDU = ({
   return netpdu;
 };
 
-interface ObfuscateNetworkPDUInput {
+export interface ObfuscateNetworkPDUInput {
   encryptedNetworkPayload: AuthenticatedEncryptedNetworkPayload;
   ctl: string;
   ttl: string;
@@ -159,37 +164,49 @@ const obfuscateNetworkPDU = ({
   return obfuscated;
 };
 
-interface SecureNetworkLayerInput {
+export interface MakeSecureNetworkLayerParams {
   encryptionKey: string;
   dst: string;
   lowerTransportPDU: string;
-  ttl: string;
+  ctl?: string; // not needed for Proxy nonce
+  ttl?: string; // not needed for Proxy nonce
   seq: number;
   src: string;
   ivIndex: string;
+  nonceType: "proxy" | "network";
 }
 const makeSecureNetworkLayer = ({
   encryptionKey,
   dst,
   lowerTransportPDU,
+  ctl,
   ttl,
   seq,
   src,
   ivIndex,
-}: SecureNetworkLayerInput): AuthenticatedEncryptedNetworkPayload => {
-  const networkNonce = makeNetworkNonce(ttl, seq, src, ivIndex);
+  nonceType,
+}: MakeSecureNetworkLayerParams): AuthenticatedEncryptedNetworkPayload => {
+  let nonce = "";
+  let netMicSize = 4;
+  if (nonceType == "network") {
+    nonce = makeNetworkNonce(ctl!, ttl!, seq, src, ivIndex);
+  } else {
+    nonce = makeProxyNonce(seq, src, ivIndex);
+    netMicSize = 8;
+  }
 
   const networkPDU = crypto.authenticateEncryptNetworkPayload(
     encryptionKey,
-    networkNonce,
+    nonce,
     dst,
-    lowerTransportPDU
+    lowerTransportPDU,
+    netMicSize
   );
 
   return networkPDU;
 };
 
-interface LowerTransportPDUInput {
+export interface MakeLowerTransportPDUParams {
   AID: string;
   upperTransportPDU: AuthenticatedEncryptedAccessPayload;
 }
@@ -204,11 +221,11 @@ interface LowerTransportPDUInput {
  * | SEG | AKF | AID | Upper Transport Access PDU |
  * | 1 octet         |                            |
  *
- * @param {LowerTransportPDUInput} LowerTransportPDUInput
+ * @param {MakeLowerTransportPDUParams} LowerTransportPDUInput
  *
  * @returns {string} Lower Transport PDU.
  */
-const makeLowerTransportPDU = ({ AID, upperTransportPDU }: LowerTransportPDUInput): string => {
+const makeLowerTransportPDU = ({ AID, upperTransportPDU }: MakeLowerTransportPDUParams): string => {
   // SEG is always 0 for Unsegmented Access Messages
   const seg = "0";
 
@@ -232,7 +249,7 @@ const makeLowerTransportPDU = ({ AID, upperTransportPDU }: LowerTransportPDUInpu
   return lowerTransportPDU;
 };
 
-type AccessPayload = string;
+export type AccessPayload = string;
 /**
  * Compose the Access Payload for the Access Layer.
  *
@@ -255,7 +272,7 @@ const makeAccessPayload = (opCode: string, params: string): AccessPayload => {
   return accessPayload as AccessPayload;
 };
 
-interface UpperTransportPDUInput {
+export interface MakeUpperTransportPDUParams {
   seq: number; // Sequence Number of the Access Message. Refer to Mesh Profile Specification 3.8.3.
   src: string; // Source Address in Hex.
   dst: string; // Destination Address in Hex.
@@ -267,7 +284,7 @@ interface UpperTransportPDUInput {
  * The upper transport PDU consists of an encrypted version of the access payload and a message
  * authentication code called the TransMIC field.
  *
- * @param {UpperTransportPDUInput} UpperTransportPDUInput
+ * @param {MakeUpperTransportPDUParams} UpperTransportPDUInput
  *
  * @returns {AuthenticatedEncryptedAccessPayload} AuthenticatedEncryptedAccessPayload
  */
@@ -278,7 +295,7 @@ const makeUpperTransportPDU = ({
   ivIndex,
   appKey,
   accessPayload,
-}: UpperTransportPDUInput): AuthenticatedEncryptedAccessPayload => {
+}: MakeUpperTransportPDUParams): AuthenticatedEncryptedAccessPayload => {
   const applicationNonce = makeApplicationNonce(seq, src, dst, ivIndex);
 
   const upperTransportPDU = crypto.authenticateEncryptAccessPayload(
@@ -318,7 +335,7 @@ const makeApplicationNonce = (seq: number, src: string, dst: string, ivIndex: st
 };
 
 /**
- * Create the Network nonce. Only Access Messages are supported.
+ * Create the Network nonce.
  *
  * Composition:
  *
@@ -327,6 +344,7 @@ const makeApplicationNonce = (seq: number, src: string, dst: string, ivIndex: st
  *
  * Refer to Mesh Profile Specification 3.8.5.1.
  *
+ * @param {string} ctl CTL. Refer to Mesh Profile Specification 3.4.4.3.
  * @param {string} ttl TTL. Refer to Mesh Profile Specification 3.4.4.4.
  * @param {number} seq Sequence Number of the Access Message.
  * @param {string} src Source Address.
@@ -334,11 +352,15 @@ const makeApplicationNonce = (seq: number, src: string, dst: string, ivIndex: st
  *
  * @returns {string} Network nonce.
  */
-const makeNetworkNonce = (ttl: string, seq: number, src: string, ivIndex: string): string => {
+const makeNetworkNonce = (
+  ctl: string,
+  ttl: string,
+  seq: number,
+  src: string,
+  ivIndex: string
+): string => {
   // Network nonce type
   const nonceType = "00";
-  // CTL for Access Message. Refer to Mesh Profile Specification 3.4.4.3.
-  const ctl = "0";
 
   const ctlInt = parseInt(ctl, 16);
   const ttlInt = parseInt(ttl, 16);
@@ -350,10 +372,41 @@ const makeNetworkNonce = (ttl: string, seq: number, src: string, ivIndex: string
   return nonceType + npdu2 + paddedSeq + src + "0000" + ivIndex;
 };
 
+/**
+ * Create the Proxy nonce.
+ *
+ * Composition:
+ *
+ * | Nonce Type | Pad          | SEQ      | SRC      | Pad      | IV Index |
+ * | 1 octet    | 1 octet      | 3 octets | 2 octets | 2 octets | 4 octets |
+ *
+ * Refer to Mesh Profile Specification 3.8.5.4.
+ *
+ * @param {number} seq Sequence Number of the Access Message.
+ * @param {string} src Source Address.
+ * @param {string} ivIndex IV Index in Hex. Refer to Mesh Profile Specification 3.8.4.
+ *
+ * @returns {string} Network nonce.
+ */
+const makeProxyNonce = (seq: number, src: string, ivIndex: string): string => {
+  // Proxy nonce type
+  const nonceType = "03";
+  const paddedSeq = utils.toHex(seq, 3);
+
+  return nonceType + "00" + paddedSeq + src + "0000" + ivIndex;
+};
+
 const pduBuilder = {
   makeProxyPDU,
   makeAccessPayload,
+  finalizeProxyPDU,
+  finalizeNetworkPDU,
+  obfuscateNetworkPDU,
+  makeSecureNetworkLayer,
+  makeLowerTransportPDU,
+  makeUpperTransportPDU,
   makeApplicationNonce,
+  makeNetworkNonce,
 };
 
 export default pduBuilder;

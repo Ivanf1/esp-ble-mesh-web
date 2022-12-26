@@ -211,6 +211,7 @@ const authenticateEncryptAccessPayload = (
  * @param {string} nonce Network nonce.
  * @param {string} dst Destination address.
  * @param {string} lowerTransportPDU Lower Transport PDU.
+ * @param {number} netMicSize Size in bytes of the NetMIC.
  *
  * @returns {AuthenticatedEncryptedNetworkPayload} AuthenticatedEncryptedNetworkPayload.
  */
@@ -218,7 +219,8 @@ const authenticateEncryptNetworkPayload = (
   encryptionKey: string,
   nonce: string,
   dst: string,
-  lowerTransportPDU: string
+  lowerTransportPDU: string,
+  netMicSize: number
 ): AuthenticatedEncryptedNetworkPayload => {
   const arg3 = dst + lowerTransportPDU;
 
@@ -231,7 +233,7 @@ const authenticateEncryptNetworkPayload = (
     u8key,
     u8nonce,
     new Uint8Array([]),
-    4
+    netMicSize
   );
 
   const hexResult = utils.u8AToHexString(authenticationEncryptionResult);
@@ -239,8 +241,8 @@ const authenticateEncryptNetworkPayload = (
   const result: AuthenticatedEncryptedNetworkPayload = {
     EncryptionKey: encryptionKey,
     EncDST: hexResult.substring(0, 4),
-    EncTransportPDU: hexResult.substring(4, hexResult.length - 8),
-    NetMIC: hexResult.substring(hexResult.length - 8, hexResult.length),
+    EncTransportPDU: hexResult.substring(4, hexResult.length - netMicSize * 2),
+    NetMIC: hexResult.substring(hexResult.length - netMicSize * 2, hexResult.length),
   };
 
   return result;
@@ -309,8 +311,20 @@ const obfuscate = function (
   const pecb_hex = e(result.pecbInput, privacyKey);
   result.pecb = pecb_hex.substring(0, 12);
 
-  const ctlInt = parseInt(ctl, 16);
+  // CTL is only 1 bit and is positioned as the
+  // most significant bit in the | CTL TTL | field.
+  let ctlInt = 0;
+  if (ctl == "1") {
+    // Position CTL as the most significant bit 0b10000000.
+    ctlInt = 0x80;
+  } else {
+    ctlInt = parseInt(ctl, 16);
+  }
+
   const ttlInt = parseInt(ttl, 16);
+  // | CTL   | TTL   |
+  // | 1 bit | 7 bit |
+  // |    1 octet    |
   const ctlTtl = ctlInt | ttlInt;
 
   const ctlTtlHex = utils.toHex(ctlTtl, 1);

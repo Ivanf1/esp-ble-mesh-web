@@ -162,7 +162,8 @@ describe("crypto test", () => {
         encryptionKey,
         nonce,
         dst,
-        lowerTransportPDU
+        lowerTransportPDU,
+        4
       );
 
       expect(computed.EncryptionKey).toEqual(expected.EncryptionKey);
