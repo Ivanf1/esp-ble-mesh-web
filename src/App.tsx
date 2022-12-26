@@ -1,42 +1,39 @@
 import { useRef, useState } from "react";
-import bluetooth, { OpCode } from "./bluetooth/bluetooth";
+import BluetoothManager from "./bluetooth/BluetoothManager";
+import GenericOnOffClient from "./bluetooth/models/GenericOnOffClient";
 import { ParsedProxyPDU } from "./bluetooth/pduParser";
+import { CONFIGURATION_API } from "./constants/bluetooth";
 
-bluetooth.initialize();
+const bluetoothManager = new BluetoothManager({
+  meshConfigurationServerUrl: CONFIGURATION_API,
+  meshConfigurationId: "1",
+});
+await bluetoothManager.initialize();
 
 function App() {
-  const [dataIn, setDataIn] = useState<BluetoothRemoteGATTCharacteristic | null>(null);
-  const [currentDevice, setCurrentDevice] = useState<BluetoothDevice | null>(null);
   const connectionButtonRef = useRef<HTMLButtonElement | null>(null);
   const ledStatusRef = useRef<HTMLParagraphElement | null>(null);
+  const [connected, setConnected] = useState<boolean>(false);
+  const [onOffClient, setOnOffClient] = useState<GenericOnOffClient | null>(null);
 
   const handleConnection = async () => {
-    if (currentDevice) {
-      currentDevice.gatt?.disconnect();
+    if (connected) {
+      bluetoothManager.disconnect();
       return;
     }
 
-    const device = await bluetooth.scanForProxyNode();
-    if (device) {
-      const server = await bluetooth.connect(device);
-
-      if (server) {
-        console.log("Connected");
-
-        const result = await bluetooth.getMeshProxyDataInDataOutCharacteristics(server);
-
-        if (result) {
-          console.log("proxy characteristics found");
-          const [dataIn, dataOut] = result;
-          setCurrentDevice(device);
-          setDataIn(dataIn);
-          bluetooth.registerProxyPDUNotificationCallback(dataOut, onProxyMessageReceived);
-          device.addEventListener("gattserverdisconnected", onDisconnected);
-          if (connectionButtonRef.current) {
-            connectionButtonRef.current.innerHTML = "disconnect";
-          }
-        }
+    const conn = await bluetoothManager.connect();
+    if (conn) {
+      setConnected(true);
+      bluetoothManager.registerProxyPDUNotificationCallback(onProxyMessageReceived);
+      bluetoothManager.registerDisconnectedCallback(onDisconnected);
+      if (connectionButtonRef.current) {
+        connectionButtonRef.current.innerHTML = "disconnect";
       }
+      const onOffClient = new GenericOnOffClient({
+        ...bluetoothManager.getConfiguration(),
+      });
+      setOnOffClient(onOffClient);
     }
   };
 
@@ -49,14 +46,18 @@ function App() {
   };
 
   const sendMessage = (onOff: boolean) => {
-    if (!dataIn) return;
-    const proxyPDU = bluetooth.makeProxyPDU(OpCode.ONOFF_SET_ACK, onOff ? "01" : "00", "0010");
-    bluetooth.sendProxyPDU(proxyPDU, dataIn!);
+    if (!connected || !onOffClient) return;
+    const proxyPUD = onOffClient.makeSetUnackMessage(
+      onOff,
+      "c000",
+      bluetoothManager.getCurrentSeq()
+    );
+    bluetoothManager.sendProxyPDU(proxyPUD);
   };
 
-  const onDisconnected = () => {
-    setCurrentDevice(null);
-    setDataIn(null);
+  const onDisconnected = (e: Event) => {
+    console.log(e);
+    setConnected(false);
     if (connectionButtonRef.current) {
       connectionButtonRef.current.innerHTML = "connect";
     }
