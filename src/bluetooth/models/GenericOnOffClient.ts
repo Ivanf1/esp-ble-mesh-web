@@ -28,8 +28,8 @@ interface GenericOnOffClientConfiguration {
 }
 class GenericOnOffClient {
   private static ctl: string = "0";
-  private static defaultTtl = "07";
-  private static nonceType = "network" as const;
+  private static defaultTtl: string = "07";
+  private static nonceType: "network" = "network";
 
   private ivIndex: string = "";
   private appKey: string = "";

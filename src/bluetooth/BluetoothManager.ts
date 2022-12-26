@@ -10,7 +10,7 @@ import crypto from "./crypto";
 import { ProxyPDU } from "./pduBuilder";
 import pduParser, { ParsedProxyPDU } from "./pduParser";
 
-interface BluetoothManagerConfiguration {
+interface BluetoothManagerProps {
   meshConfigurationServerUrl: string;
   meshConfigurationId: string;
 }
@@ -37,7 +37,7 @@ class BluetoothManager {
   private dataIn: BluetoothRemoteGATTCharacteristic | null = null;
   private dataOut: BluetoothRemoteGATTCharacteristic | null = null;
 
-  constructor(configuration: BluetoothManagerConfiguration) {
+  constructor(configuration: BluetoothManagerProps) {
     this.meshConfigurationServerUrl = configuration.meshConfigurationServerUrl;
     this.meshConfigurationId = configuration.meshConfigurationId;
     this.src = "0008";

@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import BluetoothManager from "./bluetooth/BluetoothManager";
 import GenericOnOffClient from "./bluetooth/models/GenericOnOffClient";
+import ProxyConfigurationClient from "./bluetooth/models/ProxyConfigurationClient";
 import { ParsedProxyPDU } from "./bluetooth/pduParser";
 import { CONFIGURATION_API } from "./constants/bluetooth";
 
@@ -15,6 +16,8 @@ function App() {
   const ledStatusRef = useRef<HTMLParagraphElement | null>(null);
   const [connected, setConnected] = useState<boolean>(false);
   const [onOffClient, setOnOffClient] = useState<GenericOnOffClient | null>(null);
+  const [proxyConfigurationClient, setProxyConfigurationClient] =
+    useState<ProxyConfigurationClient | null>(null);
 
   const handleConnection = async () => {
     if (connected) {
@@ -30,10 +33,20 @@ function App() {
       if (connectionButtonRef.current) {
         connectionButtonRef.current.innerHTML = "disconnect";
       }
+
       const onOffClient = new GenericOnOffClient({
         ...bluetoothManager.getConfiguration(),
       });
       setOnOffClient(onOffClient);
+      const proxyConfigurationClient = new ProxyConfigurationClient({
+        ...bluetoothManager.getConfiguration(),
+      });
+
+      setProxyConfigurationClient(proxyConfigurationClient);
+      const blacklistFilterPDU = proxyConfigurationClient.makeBlacklistFilterPDU(
+        bluetoothManager.getCurrentSeq()
+      );
+      bluetoothManager.sendProxyPDU(blacklistFilterPDU);
     }
   };
 
