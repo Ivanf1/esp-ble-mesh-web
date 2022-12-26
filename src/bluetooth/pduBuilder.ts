@@ -4,94 +4,6 @@ import crypto, {
 } from "./crypto";
 import utils from "../utils/utils";
 
-export interface AccessPayloadInput {
-  opCode: string;
-  params: string;
-}
-
-export interface UpperTransportPDUInfo {
-  seq: number;
-  src: string;
-  dst: string;
-  ivIndex: string;
-  appKey: string;
-}
-
-export interface NetworkLayerInfo {
-  encryptionKey: string;
-  dst: string;
-  ttl: string;
-  seq: number;
-  src: string;
-  ivIndex: string;
-}
-
-const makeProxyPDU = (
-  accessPayloadInfo: AccessPayloadInput,
-  upperTransportPDUInfo: UpperTransportPDUInfo,
-  networkLayerInfo: NetworkLayerInfo,
-  AID: string,
-  privacyKey: string,
-  ivi: number,
-  NID: string
-): ProxyPDU => {
-  const accessPayload = makeAccessPayload(accessPayloadInfo.opCode, accessPayloadInfo.params);
-
-  const upperTransportPDUInputParams: MakeUpperTransportPDUParams = {
-    seq: upperTransportPDUInfo.seq,
-    src: upperTransportPDUInfo.src,
-    dst: upperTransportPDUInfo.dst,
-    ivIndex: upperTransportPDUInfo.ivIndex,
-    appKey: upperTransportPDUInfo.appKey,
-    accessPayload,
-  };
-  const upperTransportPDU = makeUpperTransportPDU(upperTransportPDUInputParams);
-
-  const lowerTransportPDUInputParams: MakeLowerTransportPDUParams = {
-    AID,
-    upperTransportPDU,
-  };
-  const lowerTransportPDU = makeLowerTransportPDU(lowerTransportPDUInputParams);
-
-  const securedNetworkPDUInputParams: MakeSecureNetworkLayerParams = {
-    encryptionKey: networkLayerInfo.encryptionKey,
-    dst: networkLayerInfo.dst,
-    lowerTransportPDU,
-    ctl: "0",
-    ttl: networkLayerInfo.ttl,
-    seq: networkLayerInfo.seq,
-    src: networkLayerInfo.src,
-    ivIndex: networkLayerInfo.ivIndex,
-    nonceType: "network",
-  };
-  const securedNetworkPDU = makeSecureNetworkLayer(securedNetworkPDUInputParams);
-
-  const obfuscateNetworkPDUInputParams: ObfuscateNetworkPDUInput = {
-    encryptedNetworkPayload: securedNetworkPDU,
-    ctl: "0",
-    ttl: networkLayerInfo.ttl,
-    seq: networkLayerInfo.seq,
-    src: networkLayerInfo.src,
-    ivIndex: networkLayerInfo.ivIndex,
-    privacyKey,
-  };
-  const obfuscated = obfuscateNetworkPDU(obfuscateNetworkPDUInputParams);
-
-  const finalizedNetworkPDUInputParams: FinalizeNetworkPDUInput = {
-    ivi,
-    nid: NID,
-    obfuscated_ctl_ttl_seq_src: obfuscated.obfuscated_ctl_ttl_seq_src,
-    encDst: securedNetworkPDU.EncDST,
-    encTransportPdu: securedNetworkPDU.EncTransportPDU,
-    netmic: securedNetworkPDU.NetMIC,
-  };
-  const finalizedNetworkPDU = finalizeNetworkPDU(finalizedNetworkPDUInputParams);
-
-  const proxyPDU = finalizeProxyPDU(finalizedNetworkPDU, MessageType.NETWORK_PDU);
-
-  return proxyPDU;
-};
-
 export type ProxyPDU = string;
 export enum MessageType {
   NETWORK_PDU = 0,
@@ -397,7 +309,6 @@ const makeProxyNonce = (seq: number, src: string, ivIndex: string): string => {
 };
 
 const pduBuilder = {
-  makeProxyPDU,
   makeAccessPayload,
   finalizeProxyPDU,
   finalizeNetworkPDU,
