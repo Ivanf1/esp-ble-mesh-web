@@ -14,7 +14,6 @@ interface BluetoothManagerProps {
   meshConfigurationServerUrl: string;
   meshConfigurationId: string;
 }
-
 class BluetoothManager {
   private meshConfigurationServerUrl: string = "";
   private meshConfigurationId: string = "";

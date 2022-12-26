@@ -14,15 +14,11 @@ enum FilterType {
 }
 interface ProxyConfigurationProps {
   ivIndex: string;
-  netKey: string;
-  appKey: string;
   src: string;
   ivi: number;
   encryptionKey: string;
   privacyKey: string;
   NID: string;
-  networkId: string;
-  AID: string;
 }
 class ProxyConfigurationClient {
   private static ctl: string = "1";
