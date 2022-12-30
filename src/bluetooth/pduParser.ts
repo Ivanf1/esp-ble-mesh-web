@@ -2,6 +2,8 @@ import crypto from "./crypto";
 import utils from "../utils/utils";
 import Provisioner from "./models/Provisioner";
 
+const TAG = "PDU PARSER";
+
 export interface ParsedProxyPDU {
   src: string;
   opcode: string;
@@ -24,7 +26,7 @@ const validatePDU = (
    *    fields foo and bar and the result is an hex string.
    */
 
-  console.log(utils.u8AToHexString(pdu));
+  console.log(`${TAG}: received pdu: ${utils.u8AToHexString(pdu)}`);
 
   /**
    * ------------------------------------------------------------------------------------
@@ -56,7 +58,6 @@ const validatePDU = (
   // MessageType is contained within the last 6 bits.
   const messageType = sar_messageTypeInt & 0x3f;
   if (messageType == 3) {
-    console.log("Received Provisioning PDU");
     if (provisioner) {
       return provisioner.parseProvisionerPDU(utils.u8AToHexString(pdu.subarray(1, pdu.length)));
     }

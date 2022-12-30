@@ -3,6 +3,8 @@ import BluetoothManager from "../BluetoothManager";
 import crypto from "../crypto";
 import pduBuilder, { MessageType } from "../pduBuilder";
 
+const TAG = "PROVISIONER";
+
 enum ProvisioningType {
   INVITE = "00",
   CAPABILITIES = "01",
@@ -27,6 +29,7 @@ interface NodeToProvision {
     hex: string;
     cryptoKey: CryptoKey | undefined;
   };
+  random: string;
 }
 interface ProvisionerProps {
   bluetoothManager: BluetoothManager;
@@ -45,6 +48,7 @@ class Provisioner {
       hex: "",
       cryptoKey: undefined,
     },
+    random: "",
   };
   private confirmationMessageFields = {
     provisioningInvitePDUValue: "",
@@ -54,6 +58,7 @@ class Provisioner {
   private publicKeyHex = "";
   private publicPrivateKeyPair: CryptoKeyPair | undefined;
   private ecdhSecret = "";
+  private randomProvisioner = "";
 
   private isProvisioning = false;
   private bluetoothManager: BluetoothManager;
@@ -62,8 +67,9 @@ class Provisioner {
     this.bluetoothManager = props.bluetoothManager;
   }
 
-  private waitAndSendMessage(message: string, waitTime: number) {
+  private waitAndSendMessage(message: string, waitTime: number, log: string) {
     setTimeout(() => {
+      console.log(`${log}: ${message}`);
       this.bluetoothManager.sendProxyPDU(message);
     }, waitTime);
   }
@@ -81,6 +87,9 @@ class Provisioner {
    * 6) Provisioning Confirmation (Provisioner). The Provisioner will calculate a confirmation value
    *    that is based off of all the information already exchanged, a random number that has not been
    *    exchanged yet, and an authentication value that is communicated OOB.
+   * 7) Provisioning Random (Provisioner). The Provisioner will now expose its random number used to
+   *    generate its confirmation value that it has previously committed to.
+   * 8) Provisioning Random (Device). The new device now sends its random number to the Provisioner.
    *
    */
   startProvisioningProcess() {
@@ -89,11 +98,11 @@ class Provisioner {
     this.publicKeyHex = "";
 
     const inviteMessage = this.makeInviteMessage();
-    console.log("sending invite message");
+    console.log(`${TAG}: sending invite message`);
     this.bluetoothManager.sendProxyPDU(inviteMessage);
   }
 
-  makeInviteMessage(): string {
+  private makeInviteMessage(): string {
     const attentionDuration = "00";
     this.confirmationMessageFields.provisioningInvitePDUValue = attentionDuration;
     return pduBuilder.finalizeProxyPDU("00" + attentionDuration, MessageType.PROVISIONING);
@@ -174,7 +183,7 @@ class Provisioner {
     // random number generator.
     const a = new Uint8Array(16);
     window.crypto.getRandomValues(a);
-    const randomProvisioner = utils.u8AToHexString(a);
+    this.randomProvisioner = utils.u8AToHexString(a);
 
     // The AuthValue is a 128-bit value. The computation of AuthValue depends on the data type
     // of the Output OOB Action, Input OOB Action, or Static OOB Type that is used.
@@ -188,7 +197,7 @@ class Provisioner {
     // ConfirmationProvisioner = AES - CMACConfirmationKey(RandomProvisioner || AuthValue);
     const confirmationProvisioner = crypto.getAesCmac(
       confirmationKey,
-      randomProvisioner + authValue
+      this.randomProvisioner + authValue
     );
 
     const pdu = ProvisioningType.CONFIRMATION + confirmationProvisioner;
@@ -196,28 +205,55 @@ class Provisioner {
     return pduBuilder.finalizeProxyPDU(pdu, MessageType.PROVISIONING);
   }
 
+  private makeProvisioningRandom() {
+    const pdu = ProvisioningType.RANDOM + this.randomProvisioner;
+    return pduBuilder.finalizeProxyPDU(pdu, MessageType.PROVISIONING);
+  }
+
   async parseProvisionerPDU(pdu: string) {
     if (!this.isProvisioning) return;
+
+    console.log(`${TAG}: complete received pdu: ${pdu}`);
 
     const provisioningType = pdu.substring(0, 2) as ProvisioningType;
     const data = pdu.substring(2);
 
     switch (provisioningType) {
       case ProvisioningType.CAPABILITIES:
-        console.log("received capabilities");
+        console.log(`${TAG}: received capabilities`);
         this.parseCapabilitiesPDU(data);
 
-        console.log("sending start message");
-        this.bluetoothManager.sendProxyPDU(this.makeStartMessage());
+        const sm = this.makeStartMessage();
+        console.log(`${TAG}: sending start message: `);
+        this.bluetoothManager.sendProxyPDU(sm);
         // Wait for the previous message to be sent before sending another message
-        this.waitAndSendMessage(await this.makePublicKeyMessage(), 1500);
+        this.waitAndSendMessage(
+          await this.makePublicKeyMessage(),
+          1000,
+          `${TAG}: sending public key message`
+        );
         break;
 
       case ProvisioningType.PUBLIC_KEY:
-        console.log("received device public key");
+        console.log(`${TAG}: received device public key`);
         await this.parsePublicKeyPDU(data);
         await this.computeECDHSecret();
+        const cm = this.makeConfirmationMessage();
+        console.log(`${TAG}: sending confirmation message: ${cm}`);
         this.bluetoothManager.sendProxyPDU(this.makeConfirmationMessage());
+        break;
+
+      case ProvisioningType.CONFIRMATION:
+        console.log(`${TAG}: received confirmation message: ${data}`);
+        const pm = this.makeProvisioningRandom();
+        console.log(`${TAG}: sending provisioning random: ${pm}`);
+        this.bluetoothManager.sendProxyPDU(pm);
+        break;
+
+      case ProvisioningType.RANDOM:
+        console.log(`${TAG}: received device random: ${data}`);
+        this.parseRandomProvisioningDevice(data);
+        break;
 
       default:
         break;
@@ -259,10 +295,13 @@ class Provisioner {
       );
       this.nodeToProvision.publicKey.cryptoKey = pbk;
     } catch (error) {
-      // TODO: sent back provisioning error message
+      // TODO: send back provisioning error message
       console.log("invalid device public key");
     }
-    // console.log(pdu);
+  }
+
+  private parseRandomProvisioningDevice(pdu: string) {
+    this.nodeToProvision.random = pdu;
   }
 
   private async computeECDHSecret() {
@@ -282,7 +321,6 @@ class Provisioner {
 
     const rawSecret = await window.crypto.subtle.exportKey("raw", secret);
     const secretHex = utils.arrayBufferToHex(rawSecret);
-    console.log(`ecdh secret: ${secretHex}`);
 
     this.ecdhSecret = secretHex;
   }
