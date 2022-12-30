@@ -8,6 +8,7 @@ export type ProxyPDU = string;
 export enum MessageType {
   NETWORK_PDU = 0,
   PROXY_CONFIGURATION = 2,
+  PROVISIONING = 3,
 }
 const finalizeProxyPDU = (finalizedNetworkPDU: string, messageType: MessageType): ProxyPDU => {
   // No segmentation

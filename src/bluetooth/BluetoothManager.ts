@@ -1,4 +1,7 @@
 import {
+  MESH_PROVISIONING_DATA_IN,
+  MESH_PROVISIONING_DATA_OUT,
+  MESH_PROVISIONING_SERVICE,
   MESH_PROXY_DATA_IN,
   MESH_PROXY_DATA_OUT,
   MESH_PROXY_SERVICE,
@@ -9,6 +12,7 @@ import utils from "../utils/utils";
 import crypto from "./crypto";
 import { ProxyPDU } from "./pduBuilder";
 import pduParser, { ParsedProxyPDU } from "./pduParser";
+import Provisioner from "./models/Provisioner";
 
 interface BluetoothManagerProps {
   meshConfigurationServerUrl: string;
@@ -17,6 +21,7 @@ interface BluetoothManagerProps {
 class BluetoothManager {
   private meshConfigurationServerUrl: string = "";
   private meshConfigurationId: string = "";
+  private provisioner: Provisioner | undefined = undefined;
 
   private ivIndex: string = "";
   private netKey: string = "";
@@ -61,6 +66,52 @@ class BluetoothManager {
     return this.seq;
   }
 
+  setProvisioner(provisioner: Provisioner) {
+    this.provisioner = provisioner;
+  }
+
+  async provision() {
+    const options: RequestDeviceOptions = {
+      filters: [
+        {
+          name: "ESP-BLE-MESH",
+        },
+      ],
+      optionalServices: [MESH_PROVISIONING_SERVICE], // Required to access service later.
+    };
+
+    try {
+      const device = await navigator.bluetooth.requestDevice(options);
+      console.log(`> Device: ${device}`);
+      console.log("> Name: " + device.name);
+      console.log("> Id: " + device.id);
+
+      this.device = device;
+      const server = await this.doConnect();
+
+      if (server) {
+        console.log("Connected");
+
+        const characteristics = await this.getMeshProvisioningDataInDataOutCharacteristics(server);
+
+        if (characteristics) {
+          console.log("provisioning characteristics found");
+
+          this.dataIn = characteristics[0];
+          this.dataOut = characteristics[1];
+          return true;
+        } else {
+          return false;
+        }
+      } else {
+        return false;
+      }
+    } catch (error) {
+      console.log("ERROR: " + error);
+      return false;
+    }
+  }
+
   async connect(): Promise<boolean> {
     const options: RequestDeviceOptions = {
       filters: [
@@ -90,6 +141,7 @@ class BluetoothManager {
 
           this.dataIn = characteristics[0];
           this.dataOut = characteristics[1];
+
           return true;
         } else {
           return false;
@@ -126,15 +178,14 @@ class BluetoothManager {
     }
   }
 
-  registerProxyPDUNotificationCallback = async (
-    callback: (parsedProxyPDU: ParsedProxyPDU) => void
-  ) => {
+  // TODO: fix data in out proxy and provisioning
+  registerProxyPDUNotificationCallback = async (callback: (parsedProxyPDU: string) => void) => {
     if (!this.dataOut) return;
     await this.dataOut.startNotifications();
     this.dataOut.addEventListener("characteristicvaluechanged", (e: Event) => {
       const parsedPDU = this.parseReceivedProxyPDU(e);
       if (parsedPDU) {
-        callback(parsedPDU);
+        // callback(parsedPDU);
       }
     });
   };
@@ -148,7 +199,8 @@ class BluetoothManager {
           this.privacyKey,
           this.NID,
           this.encryptionKey,
-          this.appKey
+          this.appKey,
+          this.provisioner
         );
       }
     }
@@ -175,6 +227,20 @@ class BluetoothManager {
       const proxyService = await server.getPrimaryService(MESH_PROXY_SERVICE);
       const dataIn = await proxyService.getCharacteristic(MESH_PROXY_DATA_IN);
       const dataOut = await proxyService.getCharacteristic(MESH_PROXY_DATA_OUT);
+      return [dataIn, dataOut];
+    } catch (error) {
+      console.log("proxy characteristics not found, error: " + error);
+      return null;
+    }
+  };
+
+  private getMeshProvisioningDataInDataOutCharacteristics = async (
+    server: BluetoothRemoteGATTServer
+  ) => {
+    try {
+      const provisioningService = await server.getPrimaryService(MESH_PROVISIONING_SERVICE);
+      const dataIn = await provisioningService.getCharacteristic(MESH_PROVISIONING_DATA_IN);
+      const dataOut = await provisioningService.getCharacteristic(MESH_PROVISIONING_DATA_OUT);
       return [dataIn, dataOut];
     } catch (error) {
       console.log("proxy characteristics not found, error: " + error);

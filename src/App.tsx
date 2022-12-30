@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import BluetoothManager from "./bluetooth/BluetoothManager";
 import GenericOnOffClient from "./bluetooth/models/GenericOnOffClient";
+import Provisioner from "./bluetooth/models/Provisioner";
 import ProxyConfigurationClient from "./bluetooth/models/ProxyConfigurationClient";
 import { ParsedProxyPDU } from "./bluetooth/pduParser";
 import { CONFIGURATION_API } from "./constants/bluetooth";
@@ -9,7 +10,9 @@ const bluetoothManager = new BluetoothManager({
   meshConfigurationServerUrl: CONFIGURATION_API,
   meshConfigurationId: "1",
 });
-await bluetoothManager.initialize();
+const provisioner = new Provisioner({ bluetoothManager: bluetoothManager });
+bluetoothManager.setProvisioner(provisioner);
+// await bluetoothManager.initialize();
 const onOffClient = new GenericOnOffClient({
   ...bluetoothManager.getConfiguration(),
 });
@@ -31,7 +34,7 @@ function App() {
     const conn = await bluetoothManager.connect();
     if (conn) {
       setConnected(true);
-      bluetoothManager.registerProxyPDUNotificationCallback(onProxyMessageReceived);
+      // bluetoothManager.registerProxyPDUNotificationCallback(onProxyMessageReceived);
       bluetoothManager.registerDisconnectedCallback(onDisconnected);
       if (connectionButtonRef.current) {
         connectionButtonRef.current.innerHTML = "disconnect";
@@ -44,11 +47,22 @@ function App() {
     }
   };
 
-  const onProxyMessageReceived = (proxyPDU: ParsedProxyPDU) => {
+  const handleProvision = async () => {
+    const conn = await bluetoothManager.provision();
+
+    if (conn) {
+      bluetoothManager.registerProxyPDUNotificationCallback(onProxyMessageReceived);
+      bluetoothManager.registerDisconnectedCallback(onDisconnected);
+      // bluetoothManager.sendProxyPDU(provisioner.makeInviteMessage());
+      provisioner.startProvisioningProcess();
+    }
+  };
+
+  const onProxyMessageReceived = (proxyPDU: string) => {
     console.log(proxyPDU);
     if (ledStatusRef.current) {
-      const paramsInt = parseInt(proxyPDU.params);
-      ledStatusRef.current.innerHTML = paramsInt ? "ON" : "OFF";
+      // const paramsInt = parseInt(proxyPDU.params);
+      // ledStatusRef.current.innerHTML = paramsInt ? "ON" : "OFF";
     }
   };
 
@@ -78,6 +92,12 @@ function App() {
           ref={connectionButtonRef}
         >
           connect
+        </button>
+        <button
+          className="mt-4 px-8 py-2 rounded-md text-white bg-blue-600"
+          onClick={handleProvision}
+        >
+          provision
         </button>
         <button
           className="mt-4 px-8 py-2 rounded-md text-white bg-green-600"

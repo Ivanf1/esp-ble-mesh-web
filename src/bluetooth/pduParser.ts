@@ -1,5 +1,6 @@
 import crypto from "./crypto";
 import utils from "../utils/utils";
+import Provisioner from "./models/Provisioner";
 
 export interface ParsedProxyPDU {
   src: string;
@@ -11,7 +12,8 @@ const validatePDU = (
   privacyKey: string,
   NID: string,
   encryptionKey: string,
-  appKey: string
+  appKey: string,
+  provisioner?: Provisioner
 ) => {
   /**
    * Naming convention.
@@ -21,6 +23,8 @@ const validatePDU = (
    * 2) foo_bar_hex -> a name like this signifies the concatenation of the
    *    fields foo and bar and the result is an hex string.
    */
+
+  console.log(utils.u8AToHexString(pdu));
 
   /**
    * ------------------------------------------------------------------------------------
@@ -46,15 +50,25 @@ const validatePDU = (
     console.log(
       `Invalid value for SAR. Value is ${sar} but only 0x00 (Complete Message) is currently supported`
     );
+    return;
   }
 
   // MessageType is contained within the last 6 bits.
   const messageType = sar_messageTypeInt & 0x3f;
+  if (messageType == 3) {
+    console.log("Received Provisioning PDU");
+    if (provisioner) {
+      return provisioner.parseProvisionerPDU(utils.u8AToHexString(pdu.subarray(1, pdu.length)));
+    }
+    console.log("No provisioner provided");
+    return;
+  }
   if (messageType != 0) {
     // Refer to Mesh Profile Specification 6.3.1 Table 6.3.
     console.log(
       `Invalid value for Message Type. Value is ${messageType} but only 0x00 (Network PDU) is currently supported`
     );
+    return;
   }
 
   /**
