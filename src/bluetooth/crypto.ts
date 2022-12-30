@@ -55,6 +55,16 @@ const salts = {
   k4: s1("736d6b34"), // smk4 in ASCII
 };
 
+const k1 = (N: string, P: string, salt: string) => {
+  // T = AES - CMACsalt(N);
+  const T = getAesCmac(salt.toString(), N);
+
+  // k1(N, SALT, P) = AES - CMACt(P);
+  const res = getAesCmac(T, P);
+
+  return res;
+};
+
 /**
  * The network key material derivation function k2 is used to generate instances
  * of EncryptionKey, PrivacyKey, and NID.
@@ -387,6 +397,7 @@ const decryptAndVerify = (key: string, cipher: string, nonce: string) => {
 const crypto = {
   getAesCmac,
   s1,
+  k1,
   k2,
   k3,
   k4,

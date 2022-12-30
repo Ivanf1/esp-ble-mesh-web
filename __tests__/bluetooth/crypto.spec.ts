@@ -34,6 +34,26 @@ describe("crypto test", () => {
       expect(computed).toEqual(expected);
     });
 
+    it("should compute k1 successfully", () => {
+      const N = "3216d1509884b533248541792b877f98";
+      const salt = "2ba14ffa0df84a2831938d57d276cab4";
+      const P = "5a09d60797eeb4478aada59db3352a0d";
+
+      const expected = "f6ed15a8934afbe7d83e8dcb57fcf5d7";
+      const computed = crypto.k1(N, P, salt);
+
+      expect(computed).toEqual(expected);
+    });
+    it("should compute confirmation key", () => {
+      const confirmationSalt = "5faabe187337c71cc6c973369dcaa79a";
+      const secret = "ab85843a2f6d883f62e5684b38e307335fe6e1945ecd19604105c6f23221eb69";
+
+      const expected = "e31fe046c68ec339c425fc6629f0336f";
+      const computed = crypto.k1(secret, "7072636b", confirmationSalt);
+
+      expect(computed).toEqual(expected);
+    });
+
     it("should compute k2 material successfully", () => {
       // Refer to Mesh Profile Specification 8.1.3.
       const N = "f7a2a44f8e8a8029064f173ddc1e2b00";

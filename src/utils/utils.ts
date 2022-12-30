@@ -116,10 +116,19 @@ const U8ArrayToInt = (array: Uint8Array) => {
   return view.getUint32(0, true);
 };
 
-function arrayBufferToHex(buffer: ArrayBuffer) {
+const arrayBufferToHex = (buffer: ArrayBuffer) => {
   // buffer is an ArrayBuffer
   return [...new Uint8Array(buffer)].map((x) => x.toString(16).padStart(2, "0")).join("");
-}
+};
+
+const hexToArrayBuffer = (hex: string) => {
+  const a = new Uint8Array(
+    hex.match(/[\da-f]{2}/gi)!.map(function (h) {
+      return parseInt(h, 16);
+    })
+  );
+  return a.buffer;
+};
 
 const utils = {
   hexToBytes,
@@ -134,6 +143,7 @@ const utils = {
   leastSignificantBit,
   U8ArrayToInt,
   arrayBufferToHex,
+  hexToArrayBuffer,
 };
 
 export default utils;
