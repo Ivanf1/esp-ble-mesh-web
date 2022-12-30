@@ -15,6 +15,17 @@ enum ProvisioningType {
   RANDOM = "06",
   DATA = "07",
   COMPLETE = "08",
+  FAILED = "09",
+}
+enum ProvisioningFailedReason {
+  INVALID_PDU = "01",
+  INVALID_FORMAT = "02",
+  UNEXPECTED_PDU = "03",
+  CONFIRMATION_FAILED = "04",
+  OUT_OF_RESOURCES = "05",
+  DECRYPTION_FAILED = "06",
+  UNEXPECTED_ERROR = "07",
+  CANNOT_ASSIGN_ADDRESS = "08",
 }
 interface NodeToProvision {
   numberOfElements: string;
@@ -255,6 +266,10 @@ class Provisioner {
         this.parseRandomProvisioningDevice(data);
         break;
 
+      case ProvisioningType.FAILED:
+        this.parseFailedReason(data as ProvisioningFailedReason);
+        break;
+
       default:
         break;
     }
@@ -323,6 +338,37 @@ class Provisioner {
     const secretHex = utils.arrayBufferToHex(rawSecret);
 
     this.ecdhSecret = secretHex;
+  }
+
+  private parseFailedReason(failureReason: ProvisioningFailedReason) {
+    switch (failureReason) {
+      case ProvisioningFailedReason.INVALID_PDU:
+        console.log(`${TAG}: provisioning failed: invalid pdu`);
+        break;
+      case ProvisioningFailedReason.INVALID_FORMAT:
+        console.log(`${TAG}: provisioning failed: invalid format`);
+        break;
+      case ProvisioningFailedReason.UNEXPECTED_PDU:
+        console.log(`${TAG}: provisioning failed: unexpected pdu`);
+        break;
+      case ProvisioningFailedReason.CONFIRMATION_FAILED:
+        console.log(`${TAG}: provisioning failed: confirmation failed`);
+        break;
+      case ProvisioningFailedReason.OUT_OF_RESOURCES:
+        console.log(`${TAG}: provisioning failed: out of resources`);
+        break;
+      case ProvisioningFailedReason.DECRYPTION_FAILED:
+        console.log(`${TAG}: provisioning failed: decryption failed`);
+        break;
+      case ProvisioningFailedReason.UNEXPECTED_ERROR:
+        console.log(`${TAG}: provisioning failed: unexpected error`);
+        break;
+      case ProvisioningFailedReason.CANNOT_ASSIGN_ADDRESS:
+        console.log(`${TAG}: provisioning failed: cannot assign address`);
+        break;
+      default:
+        break;
+    }
   }
 
   __testSetNodeToProvision(
