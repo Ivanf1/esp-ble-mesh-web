@@ -113,11 +113,10 @@ const leastSignificantBit = (number: number): number => {
 
 const U8ArrayToInt = (array: Uint8Array) => {
   const view = new DataView(array.buffer, 0);
-  return view.getUint32(0, true);
+  return view.buffer.byteLength < 16 ? view.getUint16(0, true) : view.getUint32(0, true);
 };
 
 const arrayBufferToHex = (buffer: ArrayBuffer) => {
-  // buffer is an ArrayBuffer
   return [...new Uint8Array(buffer)].map((x) => x.toString(16).padStart(2, "0")).join("");
 };
 

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import crypto, {
   AuthenticatedEncryptedAccessPayload,
   AuthenticatedEncryptedNetworkPayload,
+  EncryptedProvisioningData,
 } from "../../src/bluetooth/crypto";
 
 describe("crypto test", () => {
@@ -230,6 +231,53 @@ describe("crypto test", () => {
       expect(computed.pecb).toEqual(expected.pecb);
       expect(computed.ctl_ttl_seq_src).toEqual(expected.ctl_ttl_seq_src);
       expect(computed.obfuscated_ctl_ttl_seq_src).toEqual(expected.obfuscated_ctl_ttl_seq_src);
+    });
+
+    it("should compute provisioning salt successfully", () => {
+      const confirmationSalt = "5faabe187337c71cc6c973369dcaa79a";
+      const randomProvisioner = "8b19ac31d58b124c946209b5db1021b9";
+      const randomDevice = "55a2a2bca04cd32ff6f346bd0a0c1a3a";
+
+      const expected = "a21c7d45f201cf9489a2fb57145015b4";
+      const computed = crypto.makeProvisioningSalt(
+        confirmationSalt,
+        randomProvisioner,
+        randomDevice
+      );
+      expect(computed).toEqual(expected);
+    });
+
+    it("should compute session key successfully", () => {
+      const ecdh = "ab85843a2f6d883f62e5684b38e307335fe6e1945ecd19604105c6f23221eb69";
+      const provSalt = "a21c7d45f201cf9489a2fb57145015b4";
+      const prsk = "7072736b";
+
+      const expected = "c80253af86b33dfa450bbdb2a191fea3";
+      const computed = crypto.makeSessionKey(ecdh, provSalt);
+      expect(computed).toEqual(expected);
+    });
+
+    it("should compute session nonce correctly", () => {
+      const ecdh = "ab85843a2f6d883f62e5684b38e307335fe6e1945ecd19604105c6f23221eb69";
+      const provisioningSalt = "a21c7d45f201cf9489a2fb57145015b4";
+
+      const expected = "da7ddbe78b5f62b81d6847487e";
+      const computed = crypto.makeSessionNonce(ecdh, provisioningSalt);
+      expect(computed).toEqual(expected);
+    });
+
+    it("should encrypt provisioning data successfully", () => {
+      const sessionKey = "c80253af86b33dfa450bbdb2a191fea3";
+      const sessionNonce = "da7ddbe78b5f62b81d6847487e";
+      const provisioningData = "efb2255e6422d330088e09bb015ed707056700010203040b0c";
+
+      const expected: EncryptedProvisioningData = {
+        encProvisioningData: "d0bd7f4a89a2ff6222af59a90a60ad58acfe3123356f5cec29",
+        provisioningDataMIC: "73e0ec50783b10c7",
+      };
+      const computed = crypto.encryptProvisioningData(sessionKey, sessionNonce, provisioningData);
+      expect(computed.encProvisioningData).toEqual(expected.encProvisioningData);
+      expect(computed.provisioningDataMIC).toEqual(expected.provisioningDataMIC);
     });
   });
 

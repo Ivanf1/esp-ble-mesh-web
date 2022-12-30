@@ -394,6 +394,72 @@ const decryptAndVerify = (key: string, cipher: string, nonce: string) => {
   }
 };
 
+/**
+ * Refer to Mesh Profile Specification 5.4.2.5.
+ */
+const makeProvisioningSalt = (
+  confirmationSalt: string,
+  randomProvisioner: string,
+  randomDevice: string
+) => {
+  // ProvisioningSalt = s1(ConfirmationSalt || RandomProvisioner || RandomDevice).
+  return s1(confirmationSalt + randomProvisioner + randomDevice);
+};
+
+/**
+ * Refer to Mesh Profile Specification 5.4.2.5.
+ */
+const makeSessionKey = (ecdhSecret: string, provisioningSalt: string) => {
+  // SessionKey = k1(ECDHSecret, ProvisioningSalt, “prsk”).
+  return crypto.k1(ecdhSecret, "7072736b", provisioningSalt);
+};
+
+/**
+ * Refer to Mesh Profile Specification 5.4.2.5.
+ */
+const makeSessionNonce = (ecdhSecret: string, provisioningSalt: string) => {
+  // SessionNonce = k1(ECDHSecret, ProvisioningSalt, “prsn”).
+  const nonce = crypto.k1(ecdhSecret, "7072736e", provisioningSalt);
+
+  return nonce.substring(6);
+};
+
+export interface EncryptedProvisioningData {
+  encProvisioningData: string;
+  provisioningDataMIC: string;
+}
+/**
+ * Refer to Mesh Profile Specification 5.4.2.5.
+ */
+const encryptProvisioningData = (
+  sessionKey: string,
+  sessionNonce: string,
+  provisioningData: string
+) => {
+  const u8SessionKey = utils.hexToU8A(sessionKey);
+  const u8SessionNonce = utils.hexToU8A(sessionNonce);
+  const u8ProvisioningData = utils.hexToU8A(provisioningData);
+
+  // Encrypted Provisioning Data, Provisioning Data MIC =
+  //                              AES-CCM (SessionKey, SessionNonce, Provisioning Data)
+  const enc = AES_CCM.encrypt(
+    u8ProvisioningData,
+    u8SessionKey,
+    u8SessionNonce,
+    new Uint8Array([]),
+    8 // The size of the Provisioning Data MIC is 8 octets
+  );
+
+  const encHex = utils.u8AToHexString(enc);
+
+  const result: EncryptedProvisioningData = {
+    encProvisioningData: encHex.substring(0, encHex.length - 16),
+    provisioningDataMIC: encHex.substring(encHex.length - 16),
+  };
+
+  return result;
+};
+
 const crypto = {
   getAesCmac,
   s1,
@@ -408,6 +474,10 @@ const crypto = {
   e,
   privacyRandom,
   decryptAndVerify,
+  makeProvisioningSalt,
+  makeSessionKey,
+  makeSessionNonce,
+  encryptProvisioningData,
 };
 
 export default crypto;
