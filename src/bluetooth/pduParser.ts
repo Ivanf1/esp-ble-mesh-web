@@ -1,6 +1,15 @@
 import crypto from "./crypto";
 import utils from "../utils/utils";
-import Provisioner from "./models/Provisioner";
+import { MessageType } from "./pduBuilder";
+
+/**
+ * Naming convention.
+ * Variable names are always in camel case except for this cases:
+ * 1) foo_bar -> a name like this indicates the concatenation of the fields
+ *    foo and bar.
+ * 2) foo_bar_hex -> a name like this indicates the concatenation of the
+ *    fields foo and bar and the result is an hex string.
+ */
 
 const TAG = "PDU PARSER";
 
@@ -9,23 +18,13 @@ export interface ParsedProxyPDU {
   opcode: string;
   params: string;
 }
-const validatePDU = (
-  pdu: Uint8Array,
-  privacyKey: string,
-  NID: string,
-  encryptionKey: string,
-  appKey: string,
-  provisioner?: Provisioner
-) => {
-  /**
-   * Naming convention.
-   * Variable names are always in camel case except for this cases:
-   * 1) foo_bar -> a name like this signifies the concatenation of the fields
-   *    foo and bar.
-   * 2) foo_bar_hex -> a name like this signifies the concatenation of the
-   *    fields foo and bar and the result is an hex string.
-   */
 
+export interface ProxyPDU {
+  messageType: MessageType;
+  dataHex: string;
+  dataRaw: Uint8Array;
+}
+const validatePDU = (pdu: Uint8Array) => {
   console.log(`${TAG}: received pdu: ${utils.u8AToHexString(pdu)}`);
 
   /**
@@ -50,28 +49,46 @@ const validatePDU = (
   const sar = (sar_messageTypeInt & 0xc0) >> 6;
   if (sar != 0) {
     console.log(
-      `Invalid value for SAR. Value is ${sar} but only 0x00 (Complete Message) is currently supported`
+      `Invalid value for SAR. Value is ${sar} but only 0x00 (Complete Message) is currently \
+      supported`
     );
     return;
   }
 
   // MessageType is contained within the last 6 bits.
   const messageType = sar_messageTypeInt & 0x3f;
-  if (messageType == 3) {
-    if (provisioner) {
-      return provisioner.parseProvisionerPDU(utils.u8AToHexString(pdu.subarray(1, pdu.length)));
-    }
-    console.log("No provisioner provided");
-    return;
-  }
-  if (messageType != 0) {
-    // Refer to Mesh Profile Specification 6.3.1 Table 6.3.
-    console.log(
-      `Invalid value for Message Type. Value is ${messageType} but only 0x00 (Network PDU) is currently supported`
-    );
-    return;
-  }
 
+  const dataRaw = pdu.subarray(1, pdu.length);
+  const dataHex = utils.u8AToHexString(dataRaw);
+  switch (messageType as MessageType) {
+    case MessageType.NETWORK_PDU:
+      return {
+        messageType: MessageType.NETWORK_PDU,
+        dataHex: dataHex,
+        dataRaw: dataRaw,
+      } as ProxyPDU;
+    case MessageType.PROVISIONING:
+      return {
+        messageType: MessageType.PROVISIONING,
+        dataHex: dataHex,
+        dataRaw: dataRaw,
+      } as ProxyPDU;
+    default:
+      console.log(
+        `Invalid value for Message Type. Value is ${messageType} but only 0x00 (Network PDU), \
+        0x03 (Provisioning PDU) are currently supported`
+      );
+      return;
+  }
+};
+
+const parseNetworkPDU = (
+  pdu: Uint8Array,
+  privacyKey: string,
+  NID: string,
+  encryptionKey: string,
+  appKey: string
+) => {
   /**
    * ------------------------------------------------------------------------------------
    * Network Layer.
@@ -151,7 +168,8 @@ const validatePDU = (
   // Refer to Mesh Profile Specification 3.5.2 Table 3.9.
   if (ctlInt != 0) {
     console.log(
-      `Invalid value for CTL. Value is ${ctlInt} but only 0 (Unsegmented/Segmented Access Message) is currently supported`
+      `Invalid value for CTL. Value is ${ctlInt} but only 0 (Unsegmented/Segmented Access \
+      Message) is currently supported`
     );
     return;
   }
@@ -214,7 +232,8 @@ const validatePDU = (
   // Refer to Mesh Profile Specification 3.5.2 Table 3.9.
   if (segInt != 0) {
     console.log(
-      `Invalid value for SEG. Value is ${segInt} but only 0 (no segmentation) is currently supported`
+      `Invalid value for SEG. Value is ${segInt} but only 0 (no segmentation) is currently \
+      supported`
     );
     return;
   }
@@ -299,7 +318,8 @@ const getOpcodeAndParams = (accessPayload: string): AccessPayloadData | null => 
   // Refer to Mesh Profile Specification 3.7.3.
   if (accessPayload.length < 2) {
     console.log(
-      `Invalid length for Access Payload. Length is ${accessPayload.length} but min length is 2 (1 octet).`
+      `Invalid length for Access Payload. Length is ${accessPayload.length} but min length \
+      is 2 (1 octet).`
     );
     return null;
   }
@@ -307,7 +327,8 @@ const getOpcodeAndParams = (accessPayload: string): AccessPayloadData | null => 
   // Refer to Mesh Profile Specification 3.7.3.
   if (accessPayload.length > 190) {
     console.log(
-      `Invalid length for Access Payload. Length is ${accessPayload.length} but max length is 190 (380 octets).`
+      `Invalid length for Access Payload. Length is ${accessPayload.length} but max length \
+      is 190 (380 octets).`
     );
     return null;
   }

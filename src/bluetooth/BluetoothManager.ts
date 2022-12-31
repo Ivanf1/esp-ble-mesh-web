@@ -10,10 +10,16 @@ import { LOCAL_STORAGE_SEQ_KEY } from "../constants/storageKeys";
 import { MeshNetworkConfiguration } from "./meshConfiguration.interface";
 import utils from "../utils/utils";
 import crypto from "./crypto";
-import { ProxyPDU } from "./pduBuilder";
-import pduParser, { ParsedProxyPDU } from "./pduParser";
-import Provisioner from "./models/Provisioner";
+import pduParser, { ProxyPDU } from "./pduParser";
+import { MessageType } from "./pduBuilder";
 
+type ProxyPDUNotificationCallback = (parsedProxyPDU: ProxyPDU) => void;
+type ConnectionType = "provisioning" | "proxy";
+interface ServiceAndCharacteristics {
+  service: string;
+  dataIn: string;
+  dataOut: string;
+}
 interface BluetoothManagerProps {
   meshConfigurationServerUrl: string;
   meshConfigurationId: string;
@@ -21,7 +27,6 @@ interface BluetoothManagerProps {
 class BluetoothManager {
   private meshConfigurationServerUrl: string = "";
   private meshConfigurationId: string = "";
-  private provisioner: Provisioner | undefined = undefined;
 
   private ivIndex: string = "";
   private netKey: string = "";
@@ -41,10 +46,28 @@ class BluetoothManager {
   private dataIn: BluetoothRemoteGATTCharacteristic | null = null;
   private dataOut: BluetoothRemoteGATTCharacteristic | null = null;
 
+  private proxyPDUNotificationCallbacks: Map<MessageType, ProxyPDUNotificationCallback[]>;
+  private serviceAndCharacteristicsForConnectionType: Map<
+    ConnectionType,
+    ServiceAndCharacteristics
+  >;
+
   constructor(configuration: BluetoothManagerProps) {
     this.meshConfigurationServerUrl = configuration.meshConfigurationServerUrl;
     this.meshConfigurationId = configuration.meshConfigurationId;
     this.src = "0008";
+    this.proxyPDUNotificationCallbacks = new Map();
+    this.serviceAndCharacteristicsForConnectionType = new Map();
+    this.serviceAndCharacteristicsForConnectionType.set("provisioning", {
+      service: MESH_PROVISIONING_SERVICE,
+      dataIn: MESH_PROVISIONING_DATA_IN,
+      dataOut: MESH_PROVISIONING_DATA_OUT,
+    });
+    this.serviceAndCharacteristicsForConnectionType.set("proxy", {
+      service: MESH_PROXY_SERVICE,
+      dataIn: MESH_PROXY_DATA_IN,
+      dataOut: MESH_PROXY_DATA_OUT,
+    });
   }
 
   getConfiguration() {
@@ -66,188 +89,6 @@ class BluetoothManager {
     return this.seq;
   }
 
-  setProvisioner(provisioner: Provisioner) {
-    this.provisioner = provisioner;
-  }
-
-  async provision() {
-    const options: RequestDeviceOptions = {
-      filters: [
-        {
-          name: "ESP-BLE-MESH",
-        },
-      ],
-      optionalServices: [MESH_PROVISIONING_SERVICE], // Required to access service later.
-    };
-
-    try {
-      const device = await navigator.bluetooth.requestDevice(options);
-      console.log(`> Device: ${device}`);
-      console.log("> Name: " + device.name);
-      console.log("> Id: " + device.id);
-
-      this.device = device;
-      const server = await this.doConnect();
-
-      if (server) {
-        console.log("Connected");
-
-        const characteristics = await this.getMeshProvisioningDataInDataOutCharacteristics(server);
-
-        if (characteristics) {
-          console.log("provisioning characteristics found");
-
-          this.dataIn = characteristics[0];
-          this.dataOut = characteristics[1];
-          return true;
-        } else {
-          return false;
-        }
-      } else {
-        return false;
-      }
-    } catch (error) {
-      console.log("ERROR: " + error);
-      return false;
-    }
-  }
-
-  async connect(): Promise<boolean> {
-    const options: RequestDeviceOptions = {
-      filters: [
-        {
-          name: "ESP-BLE-MESH",
-        },
-      ],
-      optionalServices: [MESH_PROXY_SERVICE], // Required to access service later.
-    };
-
-    try {
-      const device = await navigator.bluetooth.requestDevice(options);
-      console.log(`> Device: ${device}`);
-      console.log("> Name: " + device.name);
-      console.log("> Id: " + device.id);
-
-      this.device = device;
-      const server = await this.doConnect();
-
-      if (server) {
-        console.log("Connected");
-
-        const characteristics = await this.getMeshProxyDataInDataOutCharacteristics(server);
-
-        if (characteristics) {
-          console.log("proxy characteristics found");
-
-          this.dataIn = characteristics[0];
-          this.dataOut = characteristics[1];
-
-          return true;
-        } else {
-          return false;
-        }
-      } else {
-        return false;
-      }
-    } catch (error) {
-      console.log("ERROR: " + error);
-      return false;
-    }
-  }
-
-  disconnect() {
-    if (!this.device) return;
-    this.device.gatt?.disconnect();
-
-    this.device = null;
-    this.dataIn = null;
-    this.dataOut = null;
-  }
-
-  sendProxyPDU(proxyPDU: ProxyPDU) {
-    if (!this.dataIn) return;
-    const proxyPDUBytes = utils.hexToBytes(proxyPDU);
-    const proxyPDUData = new Uint8Array(proxyPDUBytes);
-    try {
-      this.dataIn.writeValue(proxyPDUData.buffer);
-      this.seq++;
-      this.updateSequenceNumberInLocalStorage();
-      console.log("sent proxy pdu OK");
-    } catch (error) {
-      console.log("Error: " + error);
-    }
-  }
-
-  // TODO: fix data in out proxy and provisioning
-  registerProxyPDUNotificationCallback = async (callback: (parsedProxyPDU: string) => void) => {
-    if (!this.dataOut) return;
-    await this.dataOut.startNotifications();
-    this.dataOut.addEventListener("characteristicvaluechanged", (e: Event) => {
-      const parsedPDU = this.parseReceivedProxyPDU(e);
-      if (parsedPDU) {
-        // callback(parsedPDU);
-      }
-    });
-  };
-
-  private parseReceivedProxyPDU = (e: Event) => {
-    if (e.target) {
-      const value = (e.target as BluetoothRemoteGATTCharacteristic).value;
-      if (value) {
-        return pduParser.validatePDU(
-          new Uint8Array(value.buffer),
-          this.privacyKey,
-          this.NID,
-          this.encryptionKey,
-          this.appKey,
-          this.provisioner
-        );
-      }
-    }
-  };
-
-  registerDisconnectedCallback(callback: (e: Event) => void) {
-    if (!this.device) return;
-    this.device.addEventListener("gattserverdisconnected", callback);
-  }
-
-  private async doConnect() {
-    try {
-      const server = await this.device!.gatt?.connect();
-      // Avoid returning undefined
-      return server ? server : null;
-    } catch (error) {
-      console.log("ERROR: could not connect - " + error);
-    }
-    return null;
-  }
-
-  private getMeshProxyDataInDataOutCharacteristics = async (server: BluetoothRemoteGATTServer) => {
-    try {
-      const proxyService = await server.getPrimaryService(MESH_PROXY_SERVICE);
-      const dataIn = await proxyService.getCharacteristic(MESH_PROXY_DATA_IN);
-      const dataOut = await proxyService.getCharacteristic(MESH_PROXY_DATA_OUT);
-      return [dataIn, dataOut];
-    } catch (error) {
-      console.log("proxy characteristics not found, error: " + error);
-      return null;
-    }
-  };
-
-  private getMeshProvisioningDataInDataOutCharacteristics = async (
-    server: BluetoothRemoteGATTServer
-  ) => {
-    try {
-      const provisioningService = await server.getPrimaryService(MESH_PROVISIONING_SERVICE);
-      const dataIn = await provisioningService.getCharacteristic(MESH_PROVISIONING_DATA_IN);
-      const dataOut = await provisioningService.getCharacteristic(MESH_PROVISIONING_DATA_OUT);
-      return [dataIn, dataOut];
-    } catch (error) {
-      console.log("proxy characteristics not found, error: " + error);
-      return null;
-    }
-  };
-
   async initialize() {
     const data = await this.retrieveMeshConfiguration();
 
@@ -267,6 +108,144 @@ class BluetoothManager {
     this.AID = crypto.k4(this.appKey);
 
     this.seq = this.getSequenceNumberFromLocalStorage();
+  }
+
+  async connect(connectionType: ConnectionType) {
+    const serviceAndCharacteristicsUUID =
+      this.serviceAndCharacteristicsForConnectionType.get(connectionType);
+    if (!serviceAndCharacteristicsUUID) return;
+
+    const options: RequestDeviceOptions = {
+      filters: [
+        {
+          name: "ESP-BLE-MESH",
+        },
+      ],
+      optionalServices: [serviceAndCharacteristicsUUID.service], // Required to access service later.
+    };
+
+    try {
+      const device = await navigator.bluetooth.requestDevice(options);
+      if (!device) return false;
+
+      console.log(`device: ${device}`);
+      console.log("name: " + device.name);
+      console.log("id: " + device.id);
+
+      const server = await this.doConnect();
+      if (!server) return false;
+
+      console.log("connected");
+
+      const characteristics = await this.getDataInDataOutCharacteristics(
+        serviceAndCharacteristicsUUID.service,
+        serviceAndCharacteristicsUUID.dataIn,
+        serviceAndCharacteristicsUUID.dataOut,
+        server
+      );
+      if (!characteristics) return false;
+
+      console.log("characteristics found");
+
+      this.device = device;
+      this.dataIn = characteristics[0];
+      this.dataOut = characteristics[1];
+
+      await this.dataOut.startNotifications();
+      this.dataOut.addEventListener("characteristicvaluechanged", (e) =>
+        this.proxyPDUNotificationDispatcher(e)
+      );
+
+      return true;
+    } catch (error) {
+      console.log("ERROR: " + error);
+      return false;
+    }
+  }
+
+  disconnect() {
+    if (!this.device) return;
+    this.device.gatt?.disconnect();
+
+    this.device = null;
+    this.dataIn = null;
+    this.dataOut = null;
+  }
+
+  sendProxyPDU(proxyPDU: string) {
+    if (!this.dataIn) return;
+    const proxyPDUBytes = utils.hexToBytes(proxyPDU);
+    const proxyPDUData = new Uint8Array(proxyPDUBytes);
+    try {
+      this.dataIn.writeValue(proxyPDUData.buffer);
+      this.seq++;
+      this.updateSequenceNumberInLocalStorage();
+      console.log("sent proxy pdu OK");
+    } catch (error) {
+      console.log("Error: " + error);
+    }
+  }
+
+  registerProxyPDUNotificationCallback = (
+    callback: ProxyPDUNotificationCallback,
+    messageType: MessageType
+  ) => {
+    let cbs = this.proxyPDUNotificationCallbacks.get(messageType);
+    if (cbs) {
+      this.proxyPDUNotificationCallbacks.set(messageType, [...cbs, callback]);
+    } else {
+      this.proxyPDUNotificationCallbacks.set(messageType, [callback]);
+    }
+  };
+
+  private proxyPDUNotificationDispatcher(e: Event) {
+    const parsedPDU = this.parseReceivedProxyPDU(e);
+    if (!parsedPDU) return;
+
+    const cbs = this.proxyPDUNotificationCallbacks.get(parsedPDU.messageType);
+    if (cbs) {
+      cbs.forEach((cb) => cb(parsedPDU));
+    }
+  }
+
+  private parseReceivedProxyPDU(e: Event) {
+    if (!e.target) return;
+    const value = (e.target as BluetoothRemoteGATTCharacteristic).value;
+
+    if (value) {
+      return pduParser.validatePDU(new Uint8Array(value.buffer));
+    }
+  }
+
+  registerDisconnectedCallback(callback: (e: Event) => void) {
+    if (!this.device) return;
+    this.device.addEventListener("gattserverdisconnected", callback);
+  }
+
+  private async doConnect() {
+    try {
+      const server = await this.device!.gatt?.connect();
+      return server;
+    } catch (error) {
+      console.log("ERROR: could not connect - " + error);
+    }
+  }
+
+  private async getDataInDataOutCharacteristics(
+    serviceUUID: string,
+    dataInUUID: string,
+    dataOutUUID: string,
+    server: BluetoothRemoteGATTServer
+  ) {
+    try {
+      const provisioningService = await server.getPrimaryService(serviceUUID);
+      const dataIn = await provisioningService.getCharacteristic(dataInUUID);
+      const dataOut = await provisioningService.getCharacteristic(dataOutUUID);
+      return [dataIn, dataOut];
+    } catch (error) {
+      console.log("characteristics not found, error: " + error);
+      return null;
+    }
   }
 
   private async retrieveMeshConfiguration() {

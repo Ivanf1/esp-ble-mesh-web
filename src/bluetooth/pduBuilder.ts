@@ -4,13 +4,12 @@ import crypto, {
 } from "./crypto";
 import utils from "../utils/utils";
 
-export type ProxyPDU = string;
 export enum MessageType {
   NETWORK_PDU = 0,
   PROXY_CONFIGURATION = 2,
   PROVISIONING = 3,
 }
-const finalizeProxyPDU = (finalizedNetworkPDU: string, messageType: MessageType): ProxyPDU => {
+const finalizeProxyPDU = (finalizedNetworkPDU: string, messageType: MessageType) => {
   // No segmentation
   const sar = 0;
   const sm = (sar << 6) | messageType;

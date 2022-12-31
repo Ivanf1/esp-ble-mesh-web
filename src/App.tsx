@@ -11,7 +11,7 @@ const bluetoothManager = new BluetoothManager({
   meshConfigurationId: "1",
 });
 const provisioner = new Provisioner({ bluetoothManager: bluetoothManager });
-bluetoothManager.setProvisioner(provisioner);
+// bluetoothManager.setProvisioner(provisioner);
 // await bluetoothManager.initialize();
 const onOffClient = new GenericOnOffClient({
   ...bluetoothManager.getConfiguration(),
@@ -31,7 +31,7 @@ function App() {
       return;
     }
 
-    const conn = await bluetoothManager.connect();
+    const conn = await bluetoothManager.connect("proxy");
     if (conn) {
       setConnected(true);
       // bluetoothManager.registerProxyPDUNotificationCallback(onProxyMessageReceived);
@@ -48,10 +48,10 @@ function App() {
   };
 
   const handleProvision = async () => {
-    const conn = await bluetoothManager.provision();
+    const conn = await bluetoothManager.connect("provisioning");
 
     if (conn) {
-      bluetoothManager.registerProxyPDUNotificationCallback(onProxyMessageReceived);
+      // bluetoothManager.registerProxyPDUNotificationCallback(onProxyMessageReceived);
       bluetoothManager.registerDisconnectedCallback(onDisconnected);
       // bluetoothManager.sendProxyPDU(provisioner.makeInviteMessage());
       provisioner.startProvisioningProcess();

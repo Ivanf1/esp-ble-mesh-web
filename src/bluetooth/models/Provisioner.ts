@@ -2,6 +2,7 @@ import utils from "../../utils/utils";
 import BluetoothManager from "../BluetoothManager";
 import crypto from "../crypto";
 import pduBuilder, { MessageType } from "../pduBuilder";
+import { ProxyPDU } from "../pduParser";
 
 const TAG = "PROVISIONER";
 
@@ -77,6 +78,10 @@ class Provisioner {
 
   constructor(props: ProvisionerProps) {
     this.bluetoothManager = props.bluetoothManager;
+    this.bluetoothManager.registerProxyPDUNotificationCallback(
+      (pdu) => this.onProxyPDUReceived(pdu),
+      MessageType.PROVISIONING
+    );
   }
 
   private waitAndSendMessage(message: string, waitTime: number, log: string) {
@@ -258,6 +263,10 @@ class Provisioner {
       encProvisioningData.provisioningDataMIC;
 
     return pduBuilder.finalizeProxyPDU(pdu, MessageType.PROVISIONING);
+  }
+
+  private onProxyPDUReceived(proxyPDU: ProxyPDU) {
+    this.parseProvisionerPDU(proxyPDU.dataHex);
   }
 
   async parseProvisionerPDU(pdu: string) {
