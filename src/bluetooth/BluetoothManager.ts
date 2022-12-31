@@ -13,6 +13,8 @@ import crypto from "./crypto";
 import pduParser, { ProxyPDU } from "./pduParser";
 import { MessageType } from "./pduBuilder";
 
+const TAG = "BLUETOOTH MANAGER";
+
 type ProxyPDUNotificationCallback = (parsedProxyPDU: ProxyPDU) => void;
 type ConnectionType = "provisioning" | "proxy";
 interface ServiceAndCharacteristics {
@@ -128,14 +130,14 @@ class BluetoothManager {
       const device = await navigator.bluetooth.requestDevice(options);
       if (!device) return false;
 
-      console.log(`device: ${device}`);
-      console.log("name: " + device.name);
-      console.log("id: " + device.id);
+      console.log(`${TAG}: device: ` + device);
+      console.log(`${TAG}: name: ${device.name}`);
+      console.log(`${TAG}: id: ${device.id}`);
 
       const server = await this.doConnect();
       if (!server) return false;
 
-      console.log("connected");
+      console.log(`${TAG}: connected`);
 
       const characteristics = await this.getDataInDataOutCharacteristics(
         serviceAndCharacteristicsUUID.service,
@@ -145,7 +147,7 @@ class BluetoothManager {
       );
       if (!characteristics) return false;
 
-      console.log("characteristics found");
+      console.log(`${TAG}: characteristics found`);
 
       this.device = device;
       this.dataIn = characteristics[0];
@@ -158,7 +160,7 @@ class BluetoothManager {
 
       return true;
     } catch (error) {
-      console.log("ERROR: " + error);
+      console.log(`${TAG}: connection error: ` + error);
       return false;
     }
   }
@@ -180,9 +182,9 @@ class BluetoothManager {
       this.dataIn.writeValue(proxyPDUData.buffer);
       this.seq++;
       this.updateSequenceNumberInLocalStorage();
-      console.log("sent proxy pdu OK");
+      console.log(`${TAG}: sent proxy pdu OK`);
     } catch (error) {
-      console.log("Error: " + error);
+      console.log(`${TAG}: sending proxy pdu error: ` + error);
     }
   }
 
@@ -227,7 +229,7 @@ class BluetoothManager {
       const server = await this.device!.gatt?.connect();
       return server;
     } catch (error) {
-      console.log("ERROR: could not connect - " + error);
+      console.log(`${TAG}: connection error: ` + error);
     }
   }
 
@@ -243,7 +245,7 @@ class BluetoothManager {
       const dataOut = await provisioningService.getCharacteristic(dataOutUUID);
       return [dataIn, dataOut];
     } catch (error) {
-      console.log("characteristics not found, error: " + error);
+      console.log(`${TAG}: characteristics not found, error: ` + error);
       return null;
     }
   }
