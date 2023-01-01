@@ -1,3 +1,4 @@
+import utils from "../../utils/utils";
 import BluetoothManager from "../BluetoothManager";
 import crypto from "../crypto";
 import pduBuilder, {
@@ -7,6 +8,7 @@ import pduBuilder, {
   ObfuscateNetworkPDUInput,
   FinalizeNetworkPDUInput,
   MessageType,
+  MakeLowerTransportPDUParams,
 } from "../pduBuilder";
 
 interface ConfigClientProps {
@@ -37,9 +39,6 @@ class ConfigClient {
     };
     const [upperTransportPDUSeg0, upperTransportPDUSeg1] =
       pduBuilder.makeSegmentedUpperTransportPDU(upperTransportPDUInputParams);
-
-    console.log(upperTransportPDUSeg0);
-    console.log(upperTransportPDUSeg1);
 
     const lowerTransportPDUInputParamsSeg0: MakeSegmentedLowerTransportPDUParams = {
       AID: "00",
@@ -148,7 +147,74 @@ class ConfigClient {
 
     console.log(`sending config add AppKey seg0: ${proxyPDUSeg0}`);
     this.bluetoothManager.sendProxyPDU(proxyPDUSeg0);
-    this.waitAndSendMessage(proxyPDUSeg1, 2000, "sending config add AppKey seg1");
+    this.waitAndSendMessage(proxyPDUSeg1, 500, "sending config add AppKey seg1");
+  }
+
+  modelAppKeyBind(nodeAddress: string, elementAddress: string, devKey: string, modelId: string) {
+    const material = crypto.k2("2C9C3BD30D717C1BAB6F20625A966245", "00");
+    const accessPayload = pduBuilder.makeAccessPayload(
+      "803d",
+      utils.swapHexEndianness(elementAddress) +
+        utils.swapHexEndianness("0000") +
+        utils.swapHexEndianness(modelId)
+    );
+
+    const upperTransportPDUInputParams: MakeUpperTransportPDUParams = {
+      seq: 13,
+      src: "0001",
+      dst: nodeAddress,
+      ivIndex: "00000000",
+      key: devKey,
+      accessPayload,
+      keyType: "device",
+    };
+    const upperTransportPDU = pduBuilder.makeUpperTransportPDU(upperTransportPDUInputParams);
+
+    const lowerTransportPDUInputParams: MakeLowerTransportPDUParams = {
+      AID: "00",
+      upperTransportPDU: upperTransportPDU,
+      isAppKey: false,
+    };
+    const lowerTransportPDU = pduBuilder.makeLowerTransportPDU(lowerTransportPDUInputParams);
+
+    const securedNetworkPDUInputParams: MakeSecureNetworkLayerParams = {
+      encryptionKey: material.encryptionKey,
+      dst: nodeAddress,
+      lowerTransportPDU: lowerTransportPDU,
+      ctl: "00",
+      ttl: "04",
+      seq: 13,
+      src: "0001",
+      ivIndex: "00000000",
+      nonceType: "network",
+    };
+    const securedNetworkPDU = pduBuilder.makeSecureNetworkLayer(securedNetworkPDUInputParams);
+
+    const obfuscateNetworkPDUInputParams: ObfuscateNetworkPDUInput = {
+      encryptedNetworkPayload: securedNetworkPDU,
+      ctl: "00",
+      ttl: "04",
+      seq: 13,
+      src: "0001",
+      ivIndex: "00000000",
+      privacyKey: material.privacyKey,
+    };
+    const obfuscated = pduBuilder.obfuscateNetworkPDU(obfuscateNetworkPDUInputParams);
+
+    const finalizedNetworkPDUInputParams: FinalizeNetworkPDUInput = {
+      ivi: 0,
+      nid: material.NID,
+      obfuscated_ctl_ttl_seq_src: obfuscated.obfuscated_ctl_ttl_seq_src,
+      encDst: securedNetworkPDU.EncDST,
+      encTransportPdu: securedNetworkPDU.EncTransportPDU,
+      netmic: securedNetworkPDU.NetMIC,
+    };
+    const finalizedNetworkPDU = pduBuilder.finalizeNetworkPDU(finalizedNetworkPDUInputParams);
+
+    const proxyPDU = pduBuilder.finalizeProxyPDU(finalizedNetworkPDU, MessageType.NETWORK_PDU);
+
+    console.log(`sending config AppKey bind: ${proxyPDU}`);
+    this.bluetoothManager.sendProxyPDU(proxyPDU);
   }
 
   private waitAndSendMessage(message: string, waitTime: number, log: string) {

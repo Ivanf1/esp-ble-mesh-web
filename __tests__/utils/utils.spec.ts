@@ -59,4 +59,23 @@ describe("utils test", () => {
       expect(computed).toEqual(expected);
     });
   });
+
+  describe("swap endianness test", () => {
+    it("should return the hex string correctly swapped", () => {
+      const str = "0004";
+
+      const expected = "0400";
+      const computed = utils.swapHexEndianness(str);
+
+      expect(computed).toEqual(expected);
+    });
+    it("should return the hex string correctly swapped", () => {
+      const str = "1000";
+
+      const expected = "0010";
+      const computed = utils.swapHexEndianness(str);
+
+      expect(computed).toEqual(expected);
+    });
+  });
 });

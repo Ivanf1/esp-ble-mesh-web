@@ -71,6 +71,7 @@ function App() {
   };
 
   const sendMessage = (onOff: boolean) => {
+    configClient.modelAppKeyBind("0003", "0004", devKey, "1000");
     // if (!connected) return;
     // const proxyPUD = onOffClient.makeSetUnackMessage(
     //   onOff,

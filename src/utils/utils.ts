@@ -139,6 +139,27 @@ const getFirstXBits = (n: number, x: number) => {
   return n & mask;
 };
 
+const swapHexEndianness = (hex: string) => {
+  if (hex.length % 2 != 0) {
+    console.log("swap endianness error: hex string need to be even in length");
+    return hex;
+  }
+
+  const numChunks = Math.ceil(hex.length / 2);
+  const chunks = new Array(numChunks);
+
+  for (let i = 0, o = 0; i < numChunks; ++i, o += 2) {
+    chunks[i] = hex.substring(o, o + 2);
+  }
+
+  let swapped = "";
+  for (let i = chunks.length - 1; i >= 0; i--) {
+    swapped += chunks[i];
+  }
+
+  return swapped;
+};
+
 const utils = {
   hexToBytes,
   bytesToHex,
@@ -155,6 +176,7 @@ const utils = {
   hexToArrayBuffer,
   getLastXBits,
   getFirstXBits,
+  swapHexEndianness,
 };
 
 export default utils;
