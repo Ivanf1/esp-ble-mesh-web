@@ -134,7 +134,7 @@ class BluetoothManager {
       console.log(`${TAG}: name: ${device.name}`);
       console.log(`${TAG}: id: ${device.id}`);
 
-      const server = await this.doConnect();
+      const server = await this.doConnect(device);
       if (!server) return false;
 
       console.log(`${TAG}: connected`);
@@ -224,9 +224,9 @@ class BluetoothManager {
     this.device.addEventListener("gattserverdisconnected", callback);
   }
 
-  private async doConnect() {
+  private async doConnect(device: BluetoothDevice) {
     try {
-      const server = await this.device!.gatt?.connect();
+      const server = await device.gatt?.connect();
       return server;
     } catch (error) {
       console.log(`${TAG}: connection error: ` + error);

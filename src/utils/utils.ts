@@ -129,6 +129,16 @@ const hexToArrayBuffer = (hex: string) => {
   return a.buffer;
 };
 
+const getLastXBits = (n: number, x: number) => {
+  const mask = 2 ** x - 1;
+  return n & mask;
+};
+
+const getFirstXBits = (n: number, x: number) => {
+  const mask = (2 ** x - 1) << (16 - x);
+  return n & mask;
+};
+
 const utils = {
   hexToBytes,
   bytesToHex,
@@ -143,6 +153,8 @@ const utils = {
   U8ArrayToInt,
   arrayBufferToHex,
   hexToArrayBuffer,
+  getLastXBits,
+  getFirstXBits,
 };
 
 export default utils;

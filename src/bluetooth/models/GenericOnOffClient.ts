@@ -68,14 +68,16 @@ class GenericOnOffClient {
       src: this.src,
       dst: dst,
       ivIndex: this.ivIndex,
-      appKey: this.appKey,
+      key: this.appKey,
       accessPayload,
+      keyType: "app",
     };
     const upperTransportPDU = pduBuilder.makeUpperTransportPDU(upperTransportPDUInputParams);
 
     const lowerTransportPDUInputParams: MakeLowerTransportPDUParams = {
       AID: this.AID,
       upperTransportPDU: upperTransportPDU,
+      isAppKey: true,
     };
     const lowerTransportPDU = pduBuilder.makeLowerTransportPDU(lowerTransportPDUInputParams);
 

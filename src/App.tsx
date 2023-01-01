@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import BluetoothManager from "./bluetooth/BluetoothManager";
+import ConfigClient from "./bluetooth/models/ConfigClient";
 import GenericOnOffClient from "./bluetooth/models/GenericOnOffClient";
 import Provisioner from "./bluetooth/models/Provisioner";
 import ProxyConfigurationClient from "./bluetooth/models/ProxyConfigurationClient";
@@ -10,8 +11,9 @@ const bluetoothManager = new BluetoothManager({
   meshConfigurationServerUrl: CONFIGURATION_API,
   meshConfigurationId: "1",
 });
-const provisioner = new Provisioner({ bluetoothManager: bluetoothManager });
-// bluetoothManager.setProvisioner(provisioner);
+const provisioner = new Provisioner({ bluetoothManager });
+const configClient = new ConfigClient({ bluetoothManager });
+
 // await bluetoothManager.initialize();
 const onOffClient = new GenericOnOffClient({
   ...bluetoothManager.getConfiguration(),
@@ -24,6 +26,7 @@ function App() {
   const connectionButtonRef = useRef<HTMLButtonElement | null>(null);
   const ledStatusRef = useRef<HTMLParagraphElement | null>(null);
   const [connected, setConnected] = useState<boolean>(false);
+  const [devKey, setDevKey] = useState<string>("");
 
   const handleConnection = async () => {
     if (connected) {
@@ -35,15 +38,16 @@ function App() {
     if (conn) {
       setConnected(true);
       // bluetoothManager.registerProxyPDUNotificationCallback(onProxyMessageReceived);
-      bluetoothManager.registerDisconnectedCallback(onDisconnected);
+      // bluetoothManager.registerDisconnectedCallback(onDisconnected);
       if (connectionButtonRef.current) {
         connectionButtonRef.current.innerHTML = "disconnect";
       }
+      configClient.addAppKey("0003", devKey);
 
-      const blacklistFilterPDU = proxyConfigurationClient.makeBlacklistFilterPDU(
-        bluetoothManager.getCurrentSeq()
-      );
-      bluetoothManager.sendProxyPDU(blacklistFilterPDU);
+      // const blacklistFilterPDU = proxyConfigurationClient.makeBlacklistFilterPDU(
+      //   bluetoothManager.getCurrentSeq()
+      // );
+      // bluetoothManager.sendProxyPDU(blacklistFilterPDU);
     }
   };
 
@@ -54,7 +58,7 @@ function App() {
       // bluetoothManager.registerProxyPDUNotificationCallback(onProxyMessageReceived);
       bluetoothManager.registerDisconnectedCallback(onDisconnected);
       // bluetoothManager.sendProxyPDU(provisioner.makeInviteMessage());
-      provisioner.startProvisioningProcess();
+      provisioner!.startProvisioningProcess(onProvisioningCompleted);
     }
   };
 
@@ -67,13 +71,14 @@ function App() {
   };
 
   const sendMessage = (onOff: boolean) => {
-    if (!connected) return;
-    const proxyPUD = onOffClient.makeSetUnackMessage(
-      onOff,
-      "c000",
-      bluetoothManager.getCurrentSeq()
-    );
-    bluetoothManager.sendProxyPDU(proxyPUD);
+    // if (!connected) return;
+    // const proxyPUD = onOffClient.makeSetUnackMessage(
+    //   onOff,
+    //   "c000",
+    //   bluetoothManager.getCurrentSeq()
+    // );
+    // bluetoothManager.sendProxyPDU(proxyPUD);
+    // provisioner.makeConfigAppKeyAdd();
   };
 
   const onDisconnected = (_: Event) => {
@@ -81,6 +86,11 @@ function App() {
     if (connectionButtonRef.current) {
       connectionButtonRef.current.innerHTML = "connect";
     }
+  };
+
+  const onProvisioningCompleted = (devKey: string) => {
+    bluetoothManager.disconnect();
+    setDevKey(devKey);
   };
 
   return (

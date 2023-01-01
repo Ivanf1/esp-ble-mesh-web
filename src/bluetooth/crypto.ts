@@ -460,6 +460,14 @@ const encryptProvisioningData = (
   return result;
 };
 
+/**
+ * Refer to Mesh Profile Specification 3.8.6.2.
+ */
+const deriveDevKey = (ecdhSecret: string, provisioningSalt: string) => {
+  // DevKey = k1(ECDHSecret, ProvisioningSalt, “prdk”)
+  return crypto.k1(ecdhSecret, "7072646b", provisioningSalt);
+};
+
 const crypto = {
   getAesCmac,
   s1,
@@ -478,6 +486,7 @@ const crypto = {
   makeSessionKey,
   makeSessionNonce,
   encryptProvisioningData,
+  deriveDevKey,
 };
 
 export default crypto;

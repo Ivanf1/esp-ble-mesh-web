@@ -18,6 +18,26 @@ const finalizeProxyPDU = (finalizedNetworkPDU: string, messageType: MessageType)
 
   return proxyPDU + finalizedNetworkPDU;
 };
+const finalizeSegmentedProxyPDU = (
+  finalizedNetworkPDU: string,
+  messageType: MessageType,
+  sarType: "first" | "continuation" | "last"
+) => {
+  // No segmentation
+  let sar;
+  if (sarType == "first") {
+    sar = 1;
+  } else if (sarType == "continuation") {
+    sar = 2;
+  } else {
+    sar = 3;
+  }
+  const sm = (sar << 6) | messageType;
+
+  let proxyPDU = "" + utils.intToHex(sm);
+
+  return proxyPDU + finalizedNetworkPDU;
+};
 
 export interface FinalizeNetworkPDUInput {
   ivi: number;
@@ -121,6 +141,7 @@ const makeSecureNetworkLayer = ({
 export interface MakeLowerTransportPDUParams {
   AID: string;
   upperTransportPDU: AuthenticatedEncryptedAccessPayload;
+  isAppKey: boolean;
 }
 /**
  * Compose the Lower Transport PDU. At the moment only Unsegmented
@@ -137,15 +158,18 @@ export interface MakeLowerTransportPDUParams {
  *
  * @returns {string} Lower Transport PDU.
  */
-const makeLowerTransportPDU = ({ AID, upperTransportPDU }: MakeLowerTransportPDUParams): string => {
+const makeLowerTransportPDU = ({
+  AID,
+  upperTransportPDU,
+  isAppKey,
+}: MakeLowerTransportPDUParams): string => {
   // SEG is always 0 for Unsegmented Access Messages
   const seg = "0";
 
   // Application Key Flag. Indicates whether or not the Upper Transport PDU
   // is encrypted whit and AppKey.
   // 1 if it is, 0 if it is not.
-  // In our case it is.
-  const akf = "1";
+  const akf = isAppKey ? "1" : "0";
 
   const segInt = parseInt(seg, 16);
   const akfInt = parseInt(akf, 16);
@@ -157,6 +181,53 @@ const makeLowerTransportPDU = ({ AID, upperTransportPDU }: MakeLowerTransportPDU
     utils.intToHex(leftLowerTransportPDU) +
     upperTransportPDU.EncAccessPayload +
     upperTransportPDU.TransMIC;
+
+  return lowerTransportPDU;
+};
+
+export interface MakeSegmentedLowerTransportPDUParams {
+  AID: string;
+  upperTransportPDU: string;
+  isAppKey: boolean;
+  seq: number;
+  segO: number;
+  segN: number;
+}
+const makeSegmentedLowerTransportPDU = ({
+  AID,
+  upperTransportPDU,
+  isAppKey,
+  seq,
+  segO,
+  segN,
+}: MakeSegmentedLowerTransportPDUParams): string => {
+  // SEG is always 1 for Segmented Access Messages
+  const seg = "1";
+
+  // Application Key Flag. Indicates whether or not the Upper Transport PDU
+  // is encrypted whit and AppKey.
+  // 1 if it is, 0 if it is not.
+  const akf = isAppKey ? "1" : "0";
+
+  const segInt = parseInt(seg, 16);
+  const akfInt = parseInt(akf, 16);
+  const aidInt = parseInt(AID, 16);
+
+  const seqZero = utils.getLastXBits(seq!, 13);
+
+  const octet1 = utils.getFirstXBits(seqZero, 7);
+  const octet1Hex = utils.toHex(octet1, 1);
+
+  const octet2 = (utils.getLastXBits(seqZero, 6) << 2) | utils.getFirstXBits(segO, 2);
+  const octet2Hex = utils.toHex(octet2, 1);
+
+  const octet3 = (utils.getLastXBits(segO, 3) << 5) | segN;
+  const octet3Hex = utils.toHex(octet3, 1);
+
+  const octet0 = (segInt << 7) | (akfInt << 6) | aidInt;
+
+  const lowerTransportPDU =
+    utils.intToHex(octet0) + octet1Hex + octet2Hex + octet3Hex + upperTransportPDU;
 
   return lowerTransportPDU;
 };
@@ -189,8 +260,9 @@ export interface MakeUpperTransportPDUParams {
   src: string; // Source Address in Hex.
   dst: string; // Destination Address in Hex.
   ivIndex: string; // IV Index in Hex. Refer to Mesh Profile Specification 3.8.4.
-  appKey: string; // AppKey.
+  key: string; // AppKey.
   accessPayload: string; // Access Payload.
+  keyType: "app" | "device";
 }
 /**
  * The upper transport PDU consists of an encrypted version of the access payload and a message
@@ -205,10 +277,16 @@ const makeUpperTransportPDU = ({
   src,
   dst,
   ivIndex,
-  appKey,
+  key: appKey,
   accessPayload,
+  keyType,
 }: MakeUpperTransportPDUParams): AuthenticatedEncryptedAccessPayload => {
-  const applicationNonce = makeApplicationNonce(seq, src, dst, ivIndex);
+  let applicationNonce;
+  if (keyType == "app") {
+    applicationNonce = makeApplicationNonce(seq, src, dst, ivIndex);
+  } else {
+    applicationNonce = makeDeviceNonce(seq, src, dst, ivIndex);
+  }
 
   const upperTransportPDU = crypto.authenticateEncryptAccessPayload(
     appKey,
@@ -217,6 +295,33 @@ const makeUpperTransportPDU = ({
   );
 
   return upperTransportPDU;
+};
+
+const makeSegmentedUpperTransportPDU = ({
+  seq,
+  src,
+  dst,
+  ivIndex,
+  key: appKey,
+  accessPayload,
+  keyType,
+}: MakeUpperTransportPDUParams): [string, string] => {
+  let applicationNonce;
+  if (keyType == "app") {
+    applicationNonce = makeApplicationNonce(seq, src, dst, ivIndex);
+  } else {
+    applicationNonce = makeDeviceNonce(seq, src, dst, ivIndex);
+  }
+
+  const upperTransportPDU = crypto.authenticateEncryptAccessPayload(
+    appKey,
+    applicationNonce,
+    accessPayload
+  );
+
+  const fullPDU = upperTransportPDU.EncAccessPayload + upperTransportPDU.TransMIC;
+
+  return [fullPDU.substring(0, fullPDU.length / 2), fullPDU.substring(fullPDU.length / 2)];
 };
 
 /**
@@ -239,6 +344,16 @@ const makeUpperTransportPDU = ({
 const makeApplicationNonce = (seq: number, src: string, dst: string, ivIndex: string): string => {
   // Application nonce type
   const nonceType = "01";
+  // No segmentation
+  const aszmic = "00";
+  const paddedSeq = utils.toHex(seq, 3);
+
+  return nonceType + aszmic + paddedSeq + src + dst + ivIndex;
+};
+
+const makeDeviceNonce = (seq: number, src: string, dst: string, ivIndex: string): string => {
+  // Device nonce type
+  const nonceType = "02";
   // No segmentation
   const aszmic = "00";
   const paddedSeq = utils.toHex(seq, 3);
@@ -311,13 +426,17 @@ const makeProxyNonce = (seq: number, src: string, ivIndex: string): string => {
 const pduBuilder = {
   makeAccessPayload,
   finalizeProxyPDU,
+  finalizeSegmentedProxyPDU,
   finalizeNetworkPDU,
   obfuscateNetworkPDU,
   makeSecureNetworkLayer,
   makeLowerTransportPDU,
+  makeSegmentedLowerTransportPDU,
   makeUpperTransportPDU,
+  makeSegmentedUpperTransportPDU,
   makeApplicationNonce,
   makeNetworkNonce,
+  makeDeviceNonce,
 };
 
 export default pduBuilder;
