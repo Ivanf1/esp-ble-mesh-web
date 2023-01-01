@@ -468,6 +468,21 @@ const deriveDevKey = (ecdhSecret: string, provisioningSalt: string) => {
   return crypto.k1(ecdhSecret, "7072646b", provisioningSalt);
 };
 
+/**
+ * Generate a NetKey or AppKey.
+ */
+const generateMeshKey = () => {
+  const a = new Uint8Array(16);
+  window.crypto.getRandomValues(a);
+  return utils.u8AToHexString(a);
+};
+
+const generateUUID = () => {
+  return (<any>[1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, (c: any) =>
+    (c ^ (window.crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16)
+  );
+};
+
 const crypto = {
   getAesCmac,
   s1,
@@ -487,6 +502,8 @@ const crypto = {
   makeSessionNonce,
   encryptProvisioningData,
   deriveDevKey,
+  generateMeshKey,
+  generateUUID,
 };
 
 export default crypto;

@@ -1,5 +1,5 @@
 export interface MeshNetworkConfiguration {
-  schema: string;
+  $schema: string;
   appKeys: AppKey[];
   groups: Group[];
   id: string;
@@ -11,7 +11,7 @@ export interface MeshNetworkConfiguration {
   partial: boolean;
   provisioners: Provisioner[];
   scenes: any[];
-  timestamp: Date;
+  timestamp: string;
   version: string;
 }
 
@@ -34,7 +34,7 @@ export interface NetKey {
   minSecurity: string;
   name: string;
   phase: number;
-  timestamp: Date;
+  timestamp: string;
 }
 
 export interface NetworkExclusion {
@@ -47,7 +47,7 @@ export interface Node {
   cid: string;
   configComplete: boolean;
   crpl: string;
-  defaultTTL: number;
+  defaultTTL?: number;
   deviceKey: string;
   elements: Element[];
   excluded: boolean;
@@ -56,7 +56,7 @@ export interface Node {
   netKeys: Key[];
   security: string;
   unicastAddress: string;
-  uuid: string;
+  UUID: string;
   pid?: string;
   vid?: string;
 }
@@ -111,7 +111,7 @@ export interface Provisioner {
   allocatedSceneRange: AllocatedSceneRange[];
   allocatedUnicastRange: AllocatedRange[];
   provisionerName: string;
-  uuid: string;
+  UUID: string;
 }
 
 export interface AllocatedRange {
