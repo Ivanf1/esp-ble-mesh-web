@@ -160,6 +160,30 @@ const swapHexEndianness = (hex: string) => {
   return swapped;
 };
 
+const swapHexEndianness2 = (hex: string) => {
+  const r = hex.replace(/^(.(..)*)$/, "0$1");
+  const a = r.match(/../g);
+  a?.reverse();
+  a?.join("");
+  return a;
+};
+
+const splitHexStringChunksOfSizeX = (hex: string, x: number) => {
+  if (hex.length % 2 != 0) {
+    console.log("error: hex string need to be even in length");
+    return;
+  }
+
+  const numChunks = Math.ceil(hex.length / x);
+  const chunks = new Array(numChunks);
+
+  for (let i = 0, o = 0; i < numChunks; ++i, o += x) {
+    chunks[i] = hex.substring(o, o + x);
+  }
+
+  return chunks;
+};
+
 const utils = {
   hexToBytes,
   bytesToHex,
@@ -177,6 +201,7 @@ const utils = {
   getLastXBits,
   getFirstXBits,
   swapHexEndianness,
+  splitHexStringChunksOfSizeX,
 };
 
 export default utils;

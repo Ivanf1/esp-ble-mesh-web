@@ -1,6 +1,6 @@
 import utils from "../../utils/utils";
 import BluetoothManager from "../BluetoothManager";
-import MeshConfigurationManager from "../MeshConfigurationManager";
+import MeshConfigurationManager, { NodeComposition } from "../MeshConfigurationManager";
 import pduBuilder, {
   MakeUpperTransportPDUParams,
   MakeSegmentedLowerTransportPDUParams,
@@ -10,7 +10,16 @@ import pduBuilder, {
   MessageType,
   MakeLowerTransportPDUParams,
 } from "../pduBuilder";
-import { ProxyPDU } from "../PduParser";
+import { AccessPayloadData, ProxyPDU } from "../PduParser";
+
+const TAG = "CONFIG CLIENT";
+
+enum OpCode {
+  APPKEY_ADD = "00",
+  COMPOSITION_DATA_GET = "8008",
+  COMPOSITION_DATA_STATUS = "02",
+  MODEL_APP_BIND = "803d",
+}
 
 interface ConfigClientProps {
   bluetoothManager: BluetoothManager;
@@ -24,14 +33,14 @@ class ConfigClient {
     this.bluetoothManager = props.bluetoothManager;
     this.meshConfigurationManager = props.meshConfigurationManager;
     this.bluetoothManager.registerProxyPDUNotificationCallback(
-      this.onConfigMessageReceived,
+      (pdu) => this.onConfigMessageReceived(pdu),
       MessageType.NETWORK_PDU
     );
   }
 
   addAppKey(dst: string, devKey: string) {
     const accessPayload = pduBuilder.makeAccessPayload(
-      "00",
+      OpCode.APPKEY_ADD,
       "000000" + this.meshConfigurationManager.getAppKey()
     );
 
@@ -159,7 +168,7 @@ class ConfigClient {
 
   modelAppKeyBind(nodeAddress: string, elementAddress: string, devKey: string, modelId: string) {
     const accessPayload = pduBuilder.makeAccessPayload(
-      "803d",
+      OpCode.MODEL_APP_BIND,
       utils.swapHexEndianness(elementAddress) +
         utils.swapHexEndianness("0000") +
         utils.swapHexEndianness(modelId)
@@ -224,7 +233,10 @@ class ConfigClient {
   }
 
   getCompositionData(nodeAddress: string, page: string, devKey: string) {
-    const accessPayload = pduBuilder.makeAccessPayload("8008", utils.swapHexEndianness(page));
+    const accessPayload = pduBuilder.makeAccessPayload(
+      OpCode.COMPOSITION_DATA_GET,
+      utils.swapHexEndianness(page)
+    );
     const seq = this.meshConfigurationManager.getSeq();
 
     const upperTransportPDUInputParams: MakeUpperTransportPDUParams = {
@@ -286,7 +298,88 @@ class ConfigClient {
     this.meshConfigurationManager.updateSeq();
   }
 
-  onConfigMessageReceived(pdu: ProxyPDU) {}
+  onConfigMessageReceived(pdu: ProxyPDU) {
+    this.parseConfigMessage(pdu.data, pdu.src!);
+  }
+
+  private parseConfigMessage(pdu: AccessPayloadData, src: string) {
+    switch (pdu.opcode as OpCode) {
+      case OpCode.COMPOSITION_DATA_STATUS:
+        const nodeComposition = this.parseCompositionData(pdu.params);
+        this.meshConfigurationManager.addNodeComposition(src, nodeComposition);
+        break;
+
+      default:
+        break;
+    }
+  }
+
+  /**
+   * Refer to Mesh Profile Specification 4.2.1.1.
+   */
+  private parseCompositionData(data: string) {
+    console.log(`${TAG}: received composition data status: ${data}`);
+
+    const pageNumber = data.substring(0, 2);
+    const cd = data.substring(2);
+
+    const cid = utils.swapHexEndianness(cd.substring(0, 4));
+    const pid = utils.swapHexEndianness(cd.substring(4, 8));
+    const vid = utils.swapHexEndianness(cd.substring(8, 12));
+    const crpl = utils.swapHexEndianness(cd.substring(12, 16));
+    const features = utils.swapHexEndianness(cd.substring(16, 20));
+    const featuresInt = parseInt(features, 16);
+
+    const relayFeature = (featuresInt & 0x0001) !== 0;
+    const proxyFeature = (featuresInt & 0x0002) !== 0;
+    const friendFeature = (featuresInt & 0x0004) !== 0;
+    const lowPowerFeature = (featuresInt & 0x0008) !== 0;
+
+    let elements = cd.substring(20);
+    const nodeComposition: NodeComposition = {
+      cid: cid,
+      pid: pid,
+      vid: vid,
+      crpl: crpl,
+      relay: relayFeature,
+      proxy: proxyFeature,
+      friend: friendFeature,
+      lowPower: lowPowerFeature,
+      elements: [],
+    };
+
+    do {
+      const location = elements.substring(0, 4);
+      const numSigModels = parseInt(elements.substring(4, 6), 16);
+      const numVendorModels = parseInt(elements.substring(6, 8), 16);
+      const models = elements.substring(8);
+
+      let sigModels: string[] = [];
+      if (numSigModels !== 0) {
+        sigModels = utils.splitHexStringChunksOfSizeX(models.substring(0, numSigModels * 4), 4)!;
+        sigModels = sigModels!.map((m) => utils.swapHexEndianness(m));
+      }
+      let vendorModels: string[] = [];
+      if (numVendorModels !== 0) {
+        vendorModels = utils.splitHexStringChunksOfSizeX(
+          models.substring(0, numVendorModels * 8),
+          8
+        )!;
+        vendorModels = vendorModels!.map((m) => utils.swapHexEndianness(m));
+      }
+
+      nodeComposition.elements.push({
+        location: location,
+        sigModels: sigModels,
+        vendorModels: vendorModels,
+      });
+
+      const elementLength = 4 + 2 + 2 + numSigModels * 4 + numVendorModels * 8;
+      elements = elements.substring(elementLength);
+    } while (elements.length > 0);
+
+    return nodeComposition;
+  }
 
   private waitAndSendMessage(message: string, waitTime: number, log: string) {
     setTimeout(() => {

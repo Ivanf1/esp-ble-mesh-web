@@ -18,6 +18,8 @@ const TAG = "PDU PARSER";
 export interface ProxyPDU {
   messageType: MessageType;
   data: AccessPayloadData;
+  src?: string;
+  dst?: string;
 }
 export interface AccessPayloadData {
   opcode: string;
@@ -149,6 +151,8 @@ class PDUParser {
         return {
           messageType: MessageType.NETWORK_PDU,
           data: result,
+          src: parsedNetworkPDU.src,
+          dst: parsedNetworkPDU.dst,
         } as ProxyPDU;
 
       case MessageType.PROVISIONING:
@@ -179,7 +183,7 @@ class PDUParser {
     // IV Index and NID are contained within the first octet of the Network PDU.
     // Refer to Mesh Profile Specification 3.4.4.
     const ivIndex_nid_hex = utils.u8AToHexString(networkPdu).substring(0, 2);
-    const ivIndex_nid = parseInt(ivIndex_nid_hex);
+    const ivIndex_nid = parseInt(ivIndex_nid_hex, 16);
 
     // IV Index and NID are not obfuscated, we can extract them directly.
     // IV Index is contained within the first bit.

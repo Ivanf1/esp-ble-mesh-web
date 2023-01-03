@@ -3,6 +3,23 @@ import { MeshNetworkConfiguration, ProvisionedNodeElement } from "./meshConfigur
 import utils from "../utils/utils";
 import crypto from "./crypto";
 
+export interface NodeComposition {
+  cid: string;
+  pid: string;
+  vid: string;
+  crpl: string;
+  relay: boolean;
+  proxy: boolean;
+  friend: boolean;
+  lowPower: boolean;
+  elements: ElementComposition[];
+}
+export interface ElementComposition {
+  location: string;
+  sigModels: string[];
+  vendorModels: string[];
+}
+
 interface MeshConfigurationManagerProps {
   meshConfigurationServerUrl: string;
   meshConfigurationId: string;
@@ -101,9 +118,11 @@ class MeshConfigurationManager {
   getSeq() {
     return this.seq;
   }
+  getNodeByUnicastAddress(nodeUnicastAddress: string) {
+    return this.meshConfiguration?.nodes.find((n) => n.unicastAddress === nodeUnicastAddress);
+  }
   getNodeDevKey(nodeUnicastAddress: string) {
-    return this.meshConfiguration?.nodes.find((n) => n.unicastAddress === nodeUnicastAddress)
-      ?.deviceKey;
+    return this.getNodeByUnicastAddress(nodeUnicastAddress)?.deviceKey;
   }
 
   updateSeq() {
@@ -135,6 +154,51 @@ class MeshConfigurationManager {
       unicastAddress: unicastAddress,
       UUID: crypto.generateUUID(),
     });
+  }
+
+  addNodeComposition(nodeUnicastAddress: string, nodeComposition: NodeComposition) {
+    const idx = this.meshConfiguration?.nodes.findIndex(
+      (n) => n.unicastAddress === nodeUnicastAddress
+    );
+    if (!idx || idx < 0) return;
+
+    const elements = nodeComposition.elements.map((e, i) => {
+      return {
+        index: i,
+        location: e.location,
+        models: [
+          ...e.sigModels.map((modelId) => {
+            return {
+              bind: [],
+              modelID: modelId,
+              subscribe: [],
+            };
+          }),
+          ...e.vendorModels.map((modelId) => {
+            return {
+              bind: [],
+              modelID: modelId,
+              subscribe: [],
+            };
+          }),
+        ],
+      };
+    });
+
+    this.meshConfiguration!.nodes[idx] = {
+      ...this.meshConfiguration!.nodes[idx],
+      cid: nodeComposition.cid,
+      pid: nodeComposition.pid,
+      vid: nodeComposition.vid,
+      crpl: nodeComposition.crpl,
+      features: {
+        relay: nodeComposition.relay ? 1 : 2,
+        proxy: nodeComposition.proxy ? 1 : 2,
+        friend: nodeComposition.friend ? 1 : 2,
+        lowPower: nodeComposition.lowPower ? 1 : 2,
+      },
+      elements: elements,
+    };
   }
 
   private newMeshConfiguration() {

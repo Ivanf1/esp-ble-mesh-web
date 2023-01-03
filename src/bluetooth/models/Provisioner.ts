@@ -3,7 +3,7 @@ import BluetoothManager from "../BluetoothManager";
 import crypto from "../crypto";
 import MeshConfigurationManager from "../MeshConfigurationManager";
 import pduBuilder, { MessageType } from "../pduBuilder";
-import { AccessPayloadData, ProxyPDU } from "../PduParser";
+import { ParsedPDU, ProxyPDU } from "../PduParser";
 
 const TAG = "PROVISIONER";
 
@@ -296,7 +296,7 @@ class Provisioner {
     this.parseProvisionerPDU(proxyPDU.data);
   }
 
-  async parseProvisionerPDU(pdu: AccessPayloadData) {
+  async parseProvisionerPDU(pdu: ParsedPDU) {
     if (!this.isProvisioning) return;
 
     switch (pdu.opcode as ProvisioningType) {
