@@ -42,7 +42,10 @@ class ConfigClient {
 
   addAppKey(dst: string) {
     const devKey = this.meshConfigurationManager.getNodeDevKey(dst);
-    if (!devKey) return;
+    if (!devKey) {
+      console.log(`No node in mesh with address: ${dst}`);
+      return;
+    }
 
     const seq = this.meshConfigurationManager.getSeq();
 
@@ -53,7 +56,7 @@ class ConfigClient {
 
     const upperTransportPDUInputParams: MakeUpperTransportPDUParams = {
       seq: seq,
-      src: "0001",
+      src: this.meshConfigurationManager.getProvisionerUnicastAddress(),
       dst: dst,
       ivIndex: this.meshConfigurationManager.getIvIndex(),
       key: devKey,
@@ -91,9 +94,9 @@ class ConfigClient {
       dst: dst,
       lowerTransportPDU: lowerTransportPDUSeg0,
       ctl: "00",
-      ttl: "04",
+      ttl: this.meshConfigurationManager.getDefaultTTLForNode(dst) ?? "05",
       seq: seq,
-      src: "0001",
+      src: this.meshConfigurationManager.getProvisionerUnicastAddress(),
       ivIndex: this.meshConfigurationManager.getIvIndex(),
       nonceType: "network",
     };
@@ -105,9 +108,9 @@ class ConfigClient {
       dst: dst,
       lowerTransportPDU: lowerTransportPDUSeg1,
       ctl: "00",
-      ttl: "04",
+      ttl: this.meshConfigurationManager.getDefaultTTLForNode(dst) ?? "05",
       seq: seq,
-      src: "0001",
+      src: this.meshConfigurationManager.getProvisionerUnicastAddress(),
       ivIndex: this.meshConfigurationManager.getIvIndex(),
       nonceType: "network",
     };
@@ -118,9 +121,9 @@ class ConfigClient {
     const obfuscateNetworkPDUInputParamsSeg0: ObfuscateNetworkPDUInput = {
       encryptedNetworkPayload: securedNetworkPDUSeg0,
       ctl: "00",
-      ttl: "04",
+      ttl: this.meshConfigurationManager.getDefaultTTLForNode(dst) ?? "05",
       seq: seq,
-      src: "0001",
+      src: this.meshConfigurationManager.getProvisionerUnicastAddress(),
       ivIndex: this.meshConfigurationManager.getIvIndex(),
       privacyKey: this.meshConfigurationManager.getPrivacyKey(),
     };
@@ -128,9 +131,9 @@ class ConfigClient {
     const obfuscateNetworkPDUInputParamsSeg1: ObfuscateNetworkPDUInput = {
       encryptedNetworkPayload: securedNetworkPDUSeg1,
       ctl: "00",
-      ttl: "04",
+      ttl: this.meshConfigurationManager.getDefaultTTLForNode(dst) ?? "05",
       seq: seq,
-      src: "0001",
+      src: this.meshConfigurationManager.getProvisionerUnicastAddress(),
       ivIndex: this.meshConfigurationManager.getIvIndex(),
       privacyKey: this.meshConfigurationManager.getPrivacyKey(),
     };
@@ -175,7 +178,10 @@ class ConfigClient {
 
   modelAppKeyBind(nodeAddress: string, elementAddress: string, modelId: string) {
     const devKey = this.meshConfigurationManager.getNodeDevKey(nodeAddress);
-    if (!devKey) return;
+    if (!devKey) {
+      console.log(`No node in mesh with address: ${nodeAddress}`);
+      return;
+    }
 
     const seq = this.meshConfigurationManager.getSeq();
 
@@ -188,7 +194,7 @@ class ConfigClient {
 
     const upperTransportPDUInputParams: MakeUpperTransportPDUParams = {
       seq: seq,
-      src: "0001",
+      src: this.meshConfigurationManager.getProvisionerUnicastAddress(),
       dst: nodeAddress,
       ivIndex: this.meshConfigurationManager.getIvIndex(),
       key: devKey,
@@ -209,9 +215,9 @@ class ConfigClient {
       dst: nodeAddress,
       lowerTransportPDU: lowerTransportPDU,
       ctl: "00",
-      ttl: "04",
+      ttl: this.meshConfigurationManager.getDefaultTTLForNode(nodeAddress),
       seq: seq,
-      src: "0001",
+      src: this.meshConfigurationManager.getProvisionerUnicastAddress(),
       ivIndex: this.meshConfigurationManager.getIvIndex(),
       nonceType: "network",
     };
@@ -220,9 +226,9 @@ class ConfigClient {
     const obfuscateNetworkPDUInputParams: ObfuscateNetworkPDUInput = {
       encryptedNetworkPayload: securedNetworkPDU,
       ctl: "00",
-      ttl: "04",
+      ttl: this.meshConfigurationManager.getDefaultTTLForNode(nodeAddress),
       seq: seq,
-      src: "0001",
+      src: this.meshConfigurationManager.getProvisionerUnicastAddress(),
       ivIndex: this.meshConfigurationManager.getIvIndex(),
       privacyKey: this.meshConfigurationManager.getPrivacyKey(),
     };
@@ -251,7 +257,10 @@ class ConfigClient {
     modelId: string
   ) {
     const devKey = this.meshConfigurationManager.getNodeDevKey(nodeAddress);
-    if (!devKey) return;
+    if (!devKey) {
+      console.log(`No node in mesh with address: ${nodeAddress}`);
+      return;
+    }
 
     const seq = this.meshConfigurationManager.getSeq();
 
@@ -268,7 +277,7 @@ class ConfigClient {
 
     const upperTransportPDUInputParams: MakeUpperTransportPDUParams = {
       seq: seq,
-      src: "0001",
+      src: this.meshConfigurationManager.getProvisionerUnicastAddress(),
       dst: nodeAddress,
       ivIndex: this.meshConfigurationManager.getIvIndex(),
       key: devKey,
@@ -289,9 +298,9 @@ class ConfigClient {
       dst: nodeAddress,
       lowerTransportPDU: lowerTransportPDU,
       ctl: "00",
-      ttl: "04",
+      ttl: this.meshConfigurationManager.getDefaultTTLForNode(nodeAddress),
       seq: seq,
-      src: "0001",
+      src: this.meshConfigurationManager.getProvisionerUnicastAddress(),
       ivIndex: this.meshConfigurationManager.getIvIndex(),
       nonceType: "network",
     };
@@ -300,9 +309,9 @@ class ConfigClient {
     const obfuscateNetworkPDUInputParams: ObfuscateNetworkPDUInput = {
       encryptedNetworkPayload: securedNetworkPDU,
       ctl: "00",
-      ttl: "04",
+      ttl: this.meshConfigurationManager.getDefaultTTLForNode(nodeAddress),
       seq: seq,
-      src: "0001",
+      src: this.meshConfigurationManager.getProvisionerUnicastAddress(),
       ivIndex: this.meshConfigurationManager.getIvIndex(),
       privacyKey: this.meshConfigurationManager.getPrivacyKey(),
     };
@@ -331,7 +340,10 @@ class ConfigClient {
     modelId: string
   ) {
     const devKey = this.meshConfigurationManager.getNodeDevKey(nodeAddress);
-    if (!devKey) return;
+    if (!devKey) {
+      console.log(`No node in mesh with address: ${nodeAddress}`);
+      return;
+    }
 
     const seq = this.meshConfigurationManager.getSeq();
 
@@ -344,7 +356,7 @@ class ConfigClient {
 
     const upperTransportPDUInputParams: MakeUpperTransportPDUParams = {
       seq: seq,
-      src: "0001",
+      src: this.meshConfigurationManager.getProvisionerUnicastAddress(),
       dst: nodeAddress,
       ivIndex: this.meshConfigurationManager.getIvIndex(),
       key: devKey,
@@ -365,9 +377,9 @@ class ConfigClient {
       dst: nodeAddress,
       lowerTransportPDU: lowerTransportPDU,
       ctl: "00",
-      ttl: "04",
+      ttl: this.meshConfigurationManager.getDefaultTTLForNode(nodeAddress),
       seq: seq,
-      src: "0001",
+      src: this.meshConfigurationManager.getProvisionerUnicastAddress(),
       ivIndex: this.meshConfigurationManager.getIvIndex(),
       nonceType: "network",
     };
@@ -376,9 +388,9 @@ class ConfigClient {
     const obfuscateNetworkPDUInputParams: ObfuscateNetworkPDUInput = {
       encryptedNetworkPayload: securedNetworkPDU,
       ctl: "00",
-      ttl: "04",
+      ttl: this.meshConfigurationManager.getDefaultTTLForNode(nodeAddress),
       seq: seq,
-      src: "0001",
+      src: this.meshConfigurationManager.getProvisionerUnicastAddress(),
       ivIndex: this.meshConfigurationManager.getIvIndex(),
       privacyKey: this.meshConfigurationManager.getPrivacyKey(),
     };
@@ -409,7 +421,7 @@ class ConfigClient {
 
     const upperTransportPDUInputParams: MakeUpperTransportPDUParams = {
       seq: seq,
-      src: "0001",
+      src: this.meshConfigurationManager.getProvisionerUnicastAddress(),
       dst: nodeAddress,
       ivIndex: this.meshConfigurationManager.getIvIndex(),
       key: devKey,
@@ -430,9 +442,9 @@ class ConfigClient {
       dst: nodeAddress,
       lowerTransportPDU: lowerTransportPDU,
       ctl: "00",
-      ttl: "04",
+      ttl: this.meshConfigurationManager.getDefaultTTLForNode(nodeAddress),
       seq: seq,
-      src: "0001",
+      src: this.meshConfigurationManager.getProvisionerUnicastAddress(),
       ivIndex: this.meshConfigurationManager.getIvIndex(),
       nonceType: "network",
     };
@@ -441,9 +453,9 @@ class ConfigClient {
     const obfuscateNetworkPDUInputParams: ObfuscateNetworkPDUInput = {
       encryptedNetworkPayload: securedNetworkPDU,
       ctl: "00",
-      ttl: "04",
+      ttl: this.meshConfigurationManager.getDefaultTTLForNode(nodeAddress),
       seq: seq,
-      src: "0001",
+      src: this.meshConfigurationManager.getProvisionerUnicastAddress(),
       ivIndex: this.meshConfigurationManager.getIvIndex(),
       privacyKey: this.meshConfigurationManager.getPrivacyKey(),
     };

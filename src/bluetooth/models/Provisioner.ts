@@ -142,7 +142,10 @@ class Provisioner {
   private makeInviteMessage(): string {
     const attentionDuration = "00";
     this.confirmationMessageFields.provisioningInvitePDUValue = attentionDuration;
-    return pduBuilder.finalizeProxyPDU("00" + attentionDuration, MessageType.PROVISIONING);
+    return pduBuilder.finalizeProxyPDU(
+      ProvisioningType.INVITE + attentionDuration,
+      MessageType.PROVISIONING
+    );
   }
 
   /**
@@ -242,15 +245,16 @@ class Provisioner {
     const sessionNonce = crypto.makeSessionNonce(this.ecdhSecret, provisioningSalt);
 
     const netKey = this.meshConfigurationManager.getNetKey();
-    const keyIndex = "0000";
-    const flags = "00";
+    const keyIndex = this.meshConfigurationManager.getNetKeyIndex();
+    const flags = "00"; // Key Refresh Phase 0, Normal Operation
     const ivIndex = this.meshConfigurationManager.getIvIndex();
-    const unicastAddress = "0003";
 
-    this.nodeToProvision.unicastAddress = "0003";
+    this.nodeToProvision.unicastAddress =
+      this.meshConfigurationManager.getNextUnicastAddressAvailable()!;
 
     // Provisioning Data = Network Key || Key Index || Flags || IV Index || Unicast Address
-    const provisioningData = netKey + keyIndex + flags + ivIndex + unicastAddress;
+    const provisioningData =
+      netKey + keyIndex + flags + ivIndex + this.nodeToProvision.unicastAddress;
 
     const encProvisioningData = crypto.encryptProvisioningData(
       sessionKey,
@@ -371,7 +375,7 @@ class Provisioner {
   private async computeECDHSecret() {
     this.ecdhSecret = await crypto.computeECDHSecret(
       this.nodeToProvision.publicKey.cryptoKey!,
-      this.publicPrivateKeyPair?.privateKey!
+      this.publicPrivateKeyPair!.privateKey
     );
   }
 

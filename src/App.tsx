@@ -48,7 +48,8 @@ function App() {
       if (connectionButtonRef.current) {
         connectionButtonRef.current.innerHTML = "disconnect";
       }
-      configClient.addAppKey("0003");
+      console.log("config client call");
+      configClient.addAppKey("0002");
 
       // const blacklistFilterPDU = proxyConfigurationClient.makeBlacklistFilterPDU(
       //   bluetoothManager.getCurrentSeq()
@@ -78,9 +79,9 @@ function App() {
 
   const sendMessage = (onOff: boolean) => {
     if (onOff) {
-      configClient.modelAppKeyBind("0003", "0004", "1000");
+      configClient.modelAppKeyBind("0002", "0003", "1000");
     } else {
-      configClient.modelPublicationSet("0003", "0004", "c000", "1000");
+      configClient.modelPublicationSet("0002", "0003", "c000", "1000");
     }
     // configClient.getCompositionData("0003", "00", devKey);
     // configClient.parseCompositionData(
@@ -144,7 +145,7 @@ function App() {
         </button>
         <button
           className="mt-4 px-8 py-2 rounded-md text-white bg-red-600"
-          onClick={() => configClient.modelSubscriptionAdd("0003", "0004", "c001", "1000")}
+          onClick={() => configClient.modelSubscriptionAdd("0002", "0003", "c001", "1000")}
         >
           off
         </button>

@@ -45,7 +45,7 @@ class MeshConfigurationManager {
     this.meshConfigurationId = configuration.meshConfigurationId;
   }
 
-  async initialize() {
+  public async initialize() {
     // const data = await this.retrieveMeshConfiguration();
     // if (!data) {
     //   console.log(`could not retrieve mesh configuration`);
@@ -71,66 +71,69 @@ class MeshConfigurationManager {
     this.seq = this.getSequenceNumberFromLocalStorage();
   }
 
-  private async retrieveMeshConfiguration() {
-    const response = await fetch(
-      `${this.meshConfigurationServerUrl}?id=${this.meshConfigurationId}`
-    );
-    const data = await response.json();
-    return data.config as MeshNetworkConfiguration;
+  public getNetKeyIndex() {
+    return utils.toHex(this.meshConfiguration!.netKeys[0].index, 2);
   }
-
-  private getSequenceNumberFromLocalStorage = () => {
-    const seq = localStorage.getItem(LOCAL_STORAGE_SEQ_KEY);
-    return seq ? JSON.parse(seq) : 0;
-  };
-
-  private updateSequenceNumberInLocalStorage = () => {
-    localStorage.setItem(LOCAL_STORAGE_SEQ_KEY, JSON.stringify(this.seq));
-  };
-
-  getIvIndex() {
+  public getAppKeyIndex() {
+    return utils.toHex(this.meshConfiguration!.appKeys[0].index, 2);
+  }
+  public getIvIndex() {
     return this.ivIndex;
   }
-  getIvi() {
+  public getIvi() {
     return this.ivi;
   }
-  getNetKey() {
+  public getNetKey() {
     return this.netKey;
   }
-  getAppKey() {
+  public getAppKey() {
     return this.appKey;
   }
-  getEncryptionKey() {
+  public getEncryptionKey() {
     return this.encryptionKey;
   }
-  getPrivacyKey() {
+  public getPrivacyKey() {
     return this.privacyKey;
   }
-  getNID() {
+  public getNID() {
     return this.NID;
   }
-  getNetworkId() {
+  public getNetworkId() {
     return this.networkId;
   }
-  getAID() {
+  public getAID() {
     return this.AID;
   }
-  getSeq() {
+  public getSeq() {
     return this.seq;
   }
-  getNodeByUnicastAddress(nodeUnicastAddress: string) {
+  public getNodeByUnicastAddress(nodeUnicastAddress: string) {
     return this.meshConfiguration?.nodes.find((n) => n.unicastAddress === nodeUnicastAddress);
   }
-  getNodeDevKey(nodeUnicastAddress: string) {
+  public getNodeDevKey(nodeUnicastAddress: string) {
     return this.getNodeByUnicastAddress(nodeUnicastAddress)?.deviceKey;
   }
+  public getDefaultTTLForNode(nodeUnicastAddress: string) {
+    return utils.toHex(this.getNodeByUnicastAddress(nodeUnicastAddress)!.defaultTTL!, 1);
+  }
+  public getNextUnicastAddressAvailable() {
+    const lastNode = this.meshConfiguration!.nodes.at(this.meshConfiguration!.nodes.length - 1);
+    if (!lastNode) return;
 
-  updateSeq() {
+    const nextAvailable = parseInt(lastNode.unicastAddress, 16) + lastNode.elements.length;
+
+    return utils.toHex(nextAvailable, 2);
+  }
+  public getProvisionerUnicastAddress() {
+    return this.meshConfiguration!.nodes[0].unicastAddress;
+  }
+
+  public updateSeq() {
     this.seq++;
     this.updateSequenceNumberInLocalStorage();
   }
 
-  addNode(unicastAddress: string, devKey: string, elementsNum: number) {
+  public addNode(unicastAddress: string, devKey: string, elementsNum: number) {
     const elements = new Array(elementsNum).map((_, i) => {
       return {
         index: i,
@@ -153,10 +156,11 @@ class MeshConfigurationManager {
       security: "secure",
       unicastAddress: unicastAddress,
       UUID: crypto.generateUUID(),
+      defaultTTL: 5,
     });
   }
 
-  addNodeComposition(nodeUnicastAddress: string, nodeComposition: NodeComposition) {
+  public addNodeComposition(nodeUnicastAddress: string, nodeComposition: NodeComposition) {
     const idx = this.meshConfiguration?.nodes.findIndex(
       (n) => n.unicastAddress === nodeUnicastAddress
     );
@@ -262,6 +266,7 @@ class MeshConfigurationManager {
           security: "secure",
           unicastAddress: "0001",
           UUID: thisNodeUUID,
+          defaultTTL: 5,
         },
       ],
       partial: false,
@@ -282,6 +287,23 @@ class MeshConfigurationManager {
 
     this.meshConfiguration = configuration;
   }
+
+  private async retrieveMeshConfiguration() {
+    const response = await fetch(
+      `${this.meshConfigurationServerUrl}?id=${this.meshConfigurationId}`
+    );
+    const data = await response.json();
+    return data.config as MeshNetworkConfiguration;
+  }
+
+  private getSequenceNumberFromLocalStorage = () => {
+    const seq = localStorage.getItem(LOCAL_STORAGE_SEQ_KEY);
+    return seq ? JSON.parse(seq) : 0;
+  };
+
+  private updateSequenceNumberInLocalStorage = () => {
+    localStorage.setItem(LOCAL_STORAGE_SEQ_KEY, JSON.stringify(this.seq));
+  };
 }
 
 export default MeshConfigurationManager;
