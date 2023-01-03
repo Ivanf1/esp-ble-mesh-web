@@ -1,5 +1,5 @@
 import { LOCAL_STORAGE_SEQ_KEY } from "../constants/storageKeys";
-import { MeshNetworkConfiguration } from "./meshConfiguration.interface";
+import { MeshNetworkConfiguration, ProvisionedNodeElement } from "./meshConfiguration.interface";
 import utils from "../utils/utils";
 import crypto from "./crypto";
 
@@ -29,17 +29,18 @@ class MeshConfigurationManager {
   }
 
   async initialize() {
-    const data = await this.retrieveMeshConfiguration();
-    if (!data) {
-      console.log(`could not retrieve mesh configuration`);
-      return;
-    }
+    // const data = await this.retrieveMeshConfiguration();
+    // if (!data) {
+    //   console.log(`could not retrieve mesh configuration`);
+    //   return;
+    // }
+    this.newMeshConfiguration();
 
-    this.meshConfiguration = data;
+    // this.meshConfiguration = data;
 
-    this.netKey = this.meshConfiguration.netKeys[0].key;
-    this.appKey = this.meshConfiguration.appKeys[0].key;
-    this.ivIndex = utils.toHex(this.meshConfiguration.networkExclusions[0].ivIndex, 4);
+    this.netKey = this.meshConfiguration!.netKeys[0].key;
+    this.appKey = this.meshConfiguration!.appKeys[0].key;
+    this.ivIndex = this.meshConfiguration!.ivIndex;
     this.ivi = utils.leastSignificantBit(parseInt(this.ivIndex, 16));
 
     const k2Material = crypto.k2(this.netKey, "00");
@@ -100,10 +101,40 @@ class MeshConfigurationManager {
   getSeq() {
     return this.seq;
   }
+  getNodeDevKey(nodeUnicastAddress: string) {
+    return this.meshConfiguration?.nodes.find((n) => n.unicastAddress === nodeUnicastAddress)
+      ?.deviceKey;
+  }
 
   updateSeq() {
     this.seq++;
     this.updateSequenceNumberInLocalStorage();
+  }
+
+  addNode(unicastAddress: string, devKey: string, elementsNum: number) {
+    const elements = new Array(elementsNum).map((_, i) => {
+      return {
+        index: i,
+        location: "",
+        models: [],
+      } as ProvisionedNodeElement;
+    });
+
+    this.meshConfiguration?.nodes.push({
+      appKeys: [{ index: 0, updated: false }],
+      cid: "0000",
+      configComplete: false,
+      crpl: "0000",
+      deviceKey: devKey,
+      elements: elements,
+      excluded: false,
+      features: { friend: 2, lowPower: 2, proxy: 2, relay: 2 },
+      name: "",
+      netKeys: [{ index: 0, updated: false }],
+      security: "secure",
+      unicastAddress: unicastAddress,
+      UUID: crypto.generateUUID(),
+    });
   }
 
   private newMeshConfiguration() {
@@ -137,12 +168,7 @@ class MeshConfigurationManager {
       networkExclusions: [],
       nodes: [
         {
-          appKeys: [
-            {
-              index: 0,
-              updated: false,
-            },
-          ],
+          appKeys: [{ index: 0, updated: false }],
           cid: "0000",
           configComplete: true,
           crpl: "0000",
@@ -166,19 +192,9 @@ class MeshConfigurationManager {
             },
           ],
           excluded: false,
-          features: {
-            friend: 2,
-            lowPower: 2,
-            proxy: 2,
-            relay: 2,
-          },
+          features: { friend: 2, lowPower: 2, proxy: 2, relay: 2 },
           name: "Web App",
-          netKeys: [
-            {
-              index: 0,
-              updated: false,
-            },
-          ],
+          netKeys: [{ index: 0, updated: false }],
           security: "secure",
           unicastAddress: "0001",
           UUID: thisNodeUUID,
@@ -187,24 +203,9 @@ class MeshConfigurationManager {
       partial: false,
       provisioners: [
         {
-          allocatedGroupRange: [
-            {
-              highAddress: "CC9A",
-              lowAddress: "C000",
-            },
-          ],
-          allocatedSceneRange: [
-            {
-              firstScene: "0001",
-              lastScene: "3333",
-            },
-          ],
-          allocatedUnicastRange: [
-            {
-              highAddress: "199A",
-              lowAddress: "0001",
-            },
-          ],
+          allocatedGroupRange: [{ highAddress: "CC9A", lowAddress: "C000" }],
+          allocatedSceneRange: [{ firstScene: "0001", lastScene: "3333" }],
+          allocatedUnicastRange: [{ highAddress: "199A", lowAddress: "0001" }],
           provisionerName: "Web App",
           UUID: thisNodeUUID,
         },
@@ -212,6 +213,7 @@ class MeshConfigurationManager {
       scenes: [],
       timestamp: timestamp,
       version: "1.0.0",
+      ivIndex: "00000000",
     };
 
     this.meshConfiguration = configuration;

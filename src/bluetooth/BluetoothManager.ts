@@ -6,12 +6,13 @@ import {
   MESH_PROXY_DATA_OUT,
   MESH_PROXY_SERVICE,
 } from "../constants/bluetooth";
-import { LOCAL_STORAGE_SEQ_KEY } from "../constants/storageKeys";
-import { MeshNetworkConfiguration } from "./meshConfiguration.interface";
+// import { LOCAL_STORAGE_SEQ_KEY } from "../constants/storageKeys";
+// import { MeshNetworkConfiguration } from "./meshConfiguration.interface";
 import utils from "../utils/utils";
-import crypto from "./crypto";
-import pduParser, { ProxyPDU } from "./pduParser";
+// import crypto from "./crypto";
 import { MessageType } from "./pduBuilder";
+import MeshConfigurationManager from "./MeshConfigurationManager";
+import PDUParser, { ProxyPDU } from "./PduParser";
 
 const TAG = "BLUETOOTH MANAGER";
 
@@ -23,12 +24,11 @@ interface ServiceAndCharacteristics {
   dataOut: string;
 }
 interface BluetoothManagerProps {
-  meshConfigurationServerUrl: string;
-  meshConfigurationId: string;
+  meshConfigurationManager: MeshConfigurationManager;
 }
 class BluetoothManager {
-  private meshConfigurationServerUrl: string = "";
-  private meshConfigurationId: string = "";
+  private meshConfigurationManager: MeshConfigurationManager;
+  private pduParser: PDUParser;
 
   private ivIndex: string = "";
   private netKey: string = "";
@@ -55,9 +55,10 @@ class BluetoothManager {
   >;
 
   constructor(configuration: BluetoothManagerProps) {
-    this.meshConfigurationServerUrl = configuration.meshConfigurationServerUrl;
-    this.meshConfigurationId = configuration.meshConfigurationId;
-    this.src = "0008";
+    this.meshConfigurationManager = configuration.meshConfigurationManager;
+    this.pduParser = PDUParser.getInstance(configuration.meshConfigurationManager);
+
+    this.src = "0001";
     this.proxyPDUNotificationCallbacks = new Map();
     this.serviceAndCharacteristicsForConnectionType = new Map();
     this.serviceAndCharacteristicsForConnectionType.set("provisioning", {
@@ -89,27 +90,6 @@ class BluetoothManager {
 
   getCurrentSeq() {
     return this.seq;
-  }
-
-  async initialize() {
-    const data = await this.retrieveMeshConfiguration();
-
-    this.netKey = data.netKeys[0].key;
-    this.appKey = data.appKeys[0].key;
-    this.ivIndex = utils.toHex(data.networkExclusions[0].ivIndex, 4);
-
-    this.ivi = utils.leastSignificantBit(parseInt(this.ivIndex, 16));
-
-    const k2Material = crypto.k2(this.netKey, "00");
-    this.encryptionKey = k2Material.encryptionKey;
-    this.privacyKey = k2Material.privacyKey;
-    this.NID = k2Material.NID;
-
-    this.networkId = crypto.k3(this.netKey);
-
-    this.AID = crypto.k4(this.appKey);
-
-    this.seq = this.getSequenceNumberFromLocalStorage();
   }
 
   async connect(connectionType: ConnectionType) {
@@ -180,8 +160,9 @@ class BluetoothManager {
     const proxyPDUData = new Uint8Array(proxyPDUBytes);
     try {
       this.dataIn.writeValue(proxyPDUData.buffer);
-      this.seq++;
-      this.updateSequenceNumberInLocalStorage();
+      this.meshConfigurationManager.updateSeq();
+      // this.seq++;
+      // this.updateSequenceNumberInLocalStorage();
       console.log(`${TAG}: sent proxy pdu OK`);
     } catch (error) {
       console.log(`${TAG}: sending proxy pdu error: ` + error);
@@ -215,7 +196,7 @@ class BluetoothManager {
     const value = (e.target as BluetoothRemoteGATTCharacteristic).value;
 
     if (value) {
-      return pduParser.validatePDU(new Uint8Array(value.buffer));
+      return this.pduParser.parsePDU(new Uint8Array(value.buffer));
     }
   }
 
@@ -249,23 +230,6 @@ class BluetoothManager {
       return null;
     }
   }
-
-  private async retrieveMeshConfiguration() {
-    const response = await fetch(
-      `${this.meshConfigurationServerUrl}?id=${this.meshConfigurationId}`
-    );
-    const data = await response.json();
-    return data.config as MeshNetworkConfiguration;
-  }
-
-  private getSequenceNumberFromLocalStorage = () => {
-    const seq = localStorage.getItem(LOCAL_STORAGE_SEQ_KEY);
-    return seq ? JSON.parse(seq) : 0;
-  };
-
-  private updateSequenceNumberInLocalStorage = () => {
-    localStorage.setItem(LOCAL_STORAGE_SEQ_KEY, JSON.stringify(this.seq));
-  };
 }
 
 export default BluetoothManager;

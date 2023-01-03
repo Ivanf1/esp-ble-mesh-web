@@ -7,12 +7,13 @@ export interface MeshNetworkConfiguration {
   meshUUID: string;
   netKeys: NetKey[];
   networkExclusions: NetworkExclusion[];
-  nodes: Node[];
+  nodes: ProvisionedNode[];
   partial: boolean;
   provisioners: Provisioner[];
   scenes: any[];
   timestamp: string;
   version: string;
+  ivIndex: string;
 }
 
 export interface AppKey {
@@ -42,14 +43,14 @@ export interface NetworkExclusion {
   ivIndex: number;
 }
 
-export interface Node {
+export interface ProvisionedNode {
   appKeys: Key[];
   cid: string;
   configComplete: boolean;
   crpl: string;
   defaultTTL?: number;
   deviceKey: string;
-  elements: Element[];
+  elements: ProvisionedNodeElement[];
   excluded: boolean;
   features: Features;
   name: string;
@@ -66,14 +67,14 @@ export interface Key {
   updated: boolean;
 }
 
-export interface Element {
+export interface ProvisionedNodeElement {
   index: number;
   location: string;
-  models: Model[];
+  models: ElementModel[];
   name?: string;
 }
 
-export interface Model {
+export interface ElementModel {
   bind: number[];
   modelID: string;
   subscribe: string[];

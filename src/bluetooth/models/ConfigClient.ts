@@ -1,6 +1,6 @@
 import utils from "../../utils/utils";
 import BluetoothManager from "../BluetoothManager";
-import crypto from "../crypto";
+import MeshConfigurationManager from "../MeshConfigurationManager";
 import pduBuilder, {
   MakeUpperTransportPDUParams,
   MakeSegmentedLowerTransportPDUParams,
@@ -10,29 +10,36 @@ import pduBuilder, {
   MessageType,
   MakeLowerTransportPDUParams,
 } from "../pduBuilder";
+import { ProxyPDU } from "../PduParser";
 
 interface ConfigClientProps {
   bluetoothManager: BluetoothManager;
+  meshConfigurationManager: MeshConfigurationManager;
 }
 class ConfigClient {
   private bluetoothManager: BluetoothManager;
+  private meshConfigurationManager: MeshConfigurationManager;
 
   constructor(props: ConfigClientProps) {
     this.bluetoothManager = props.bluetoothManager;
+    this.meshConfigurationManager = props.meshConfigurationManager;
+    this.bluetoothManager.registerProxyPDUNotificationCallback(
+      this.onConfigMessageReceived,
+      MessageType.NETWORK_PDU
+    );
   }
 
   addAppKey(dst: string, devKey: string) {
-    const material = crypto.k2("2C9C3BD30D717C1BAB6F20625A966245", "00");
     const accessPayload = pduBuilder.makeAccessPayload(
       "00",
-      "000000" + "63964771734fbd76e3b40519d1d94a48"
+      "000000" + this.meshConfigurationManager.getAppKey()
     );
 
     const upperTransportPDUInputParams: MakeUpperTransportPDUParams = {
       seq: 12,
       src: "0001",
       dst: dst,
-      ivIndex: "00000000",
+      ivIndex: this.meshConfigurationManager.getIvIndex(),
       key: devKey,
       accessPayload,
       keyType: "device",
@@ -41,7 +48,7 @@ class ConfigClient {
       pduBuilder.makeSegmentedUpperTransportPDU(upperTransportPDUInputParams);
 
     const lowerTransportPDUInputParamsSeg0: MakeSegmentedLowerTransportPDUParams = {
-      AID: "00",
+      AID: this.meshConfigurationManager.getAID(),
       upperTransportPDU: upperTransportPDUSeg0,
       isAppKey: false,
       segN: 1,
@@ -52,7 +59,7 @@ class ConfigClient {
       lowerTransportPDUInputParamsSeg0
     );
     const lowerTransportPDUInputParamsSeg1: MakeSegmentedLowerTransportPDUParams = {
-      AID: "00",
+      AID: this.meshConfigurationManager.getAID(),
       upperTransportPDU: upperTransportPDUSeg1,
       isAppKey: false,
       segN: 1,
@@ -64,28 +71,28 @@ class ConfigClient {
     );
 
     const securedNetworkPDUInputParamsSeg0: MakeSecureNetworkLayerParams = {
-      encryptionKey: material.encryptionKey,
+      encryptionKey: this.meshConfigurationManager.getEncryptionKey(),
       dst: dst,
       lowerTransportPDU: lowerTransportPDUSeg0,
       ctl: "00",
       ttl: "04",
       seq: 12,
       src: "0001",
-      ivIndex: "00000000",
+      ivIndex: this.meshConfigurationManager.getIvIndex(),
       nonceType: "network",
     };
     const securedNetworkPDUSeg0 = pduBuilder.makeSecureNetworkLayer(
       securedNetworkPDUInputParamsSeg0
     );
     const securedNetworkPDUInputParamsSeg1: MakeSecureNetworkLayerParams = {
-      encryptionKey: material.encryptionKey,
+      encryptionKey: this.meshConfigurationManager.getEncryptionKey(),
       dst: dst,
       lowerTransportPDU: lowerTransportPDUSeg1,
       ctl: "00",
       ttl: "04",
       seq: 12,
       src: "0001",
-      ivIndex: "00000000",
+      ivIndex: this.meshConfigurationManager.getIvIndex(),
       nonceType: "network",
     };
     const securedNetworkPDUSeg1 = pduBuilder.makeSecureNetworkLayer(
@@ -98,8 +105,8 @@ class ConfigClient {
       ttl: "04",
       seq: 12,
       src: "0001",
-      ivIndex: "00000000",
-      privacyKey: material.privacyKey,
+      ivIndex: this.meshConfigurationManager.getIvIndex(),
+      privacyKey: this.meshConfigurationManager.getPrivacyKey(),
     };
     const obfuscatedSeg0 = pduBuilder.obfuscateNetworkPDU(obfuscateNetworkPDUInputParamsSeg0);
     const obfuscateNetworkPDUInputParamsSeg1: ObfuscateNetworkPDUInput = {
@@ -108,14 +115,14 @@ class ConfigClient {
       ttl: "04",
       seq: 12,
       src: "0001",
-      ivIndex: "00000000",
-      privacyKey: material.privacyKey,
+      ivIndex: this.meshConfigurationManager.getIvIndex(),
+      privacyKey: this.meshConfigurationManager.getPrivacyKey(),
     };
     const obfuscatedSeg1 = pduBuilder.obfuscateNetworkPDU(obfuscateNetworkPDUInputParamsSeg1);
 
     const finalizedNetworkPDUInputParamsSeg0: FinalizeNetworkPDUInput = {
-      ivi: 0,
-      nid: material.NID,
+      ivi: this.meshConfigurationManager.getIvi(),
+      nid: this.meshConfigurationManager.getNID(),
       obfuscated_ctl_ttl_seq_src: obfuscatedSeg0.obfuscated_ctl_ttl_seq_src,
       encDst: securedNetworkPDUSeg0.EncDST,
       encTransportPdu: securedNetworkPDUSeg0.EncTransportPDU,
@@ -125,8 +132,8 @@ class ConfigClient {
       finalizedNetworkPDUInputParamsSeg0
     );
     const finalizedNetworkPDUInputParamsSeg1: FinalizeNetworkPDUInput = {
-      ivi: 0,
-      nid: material.NID,
+      ivi: this.meshConfigurationManager.getIvi(),
+      nid: this.meshConfigurationManager.getNID(),
       obfuscated_ctl_ttl_seq_src: obfuscatedSeg1.obfuscated_ctl_ttl_seq_src,
       encDst: securedNetworkPDUSeg1.EncDST,
       encTransportPdu: securedNetworkPDUSeg1.EncTransportPDU,
@@ -151,7 +158,6 @@ class ConfigClient {
   }
 
   modelAppKeyBind(nodeAddress: string, elementAddress: string, devKey: string, modelId: string) {
-    const material = crypto.k2("2C9C3BD30D717C1BAB6F20625A966245", "00");
     const accessPayload = pduBuilder.makeAccessPayload(
       "803d",
       utils.swapHexEndianness(elementAddress) +
@@ -163,7 +169,7 @@ class ConfigClient {
       seq: 13,
       src: "0001",
       dst: nodeAddress,
-      ivIndex: "00000000",
+      ivIndex: this.meshConfigurationManager.getIvIndex(),
       key: devKey,
       accessPayload,
       keyType: "device",
@@ -171,21 +177,21 @@ class ConfigClient {
     const upperTransportPDU = pduBuilder.makeUpperTransportPDU(upperTransportPDUInputParams);
 
     const lowerTransportPDUInputParams: MakeLowerTransportPDUParams = {
-      AID: "00",
+      AID: this.meshConfigurationManager.getAID(),
       upperTransportPDU: upperTransportPDU,
       isAppKey: false,
     };
     const lowerTransportPDU = pduBuilder.makeLowerTransportPDU(lowerTransportPDUInputParams);
 
     const securedNetworkPDUInputParams: MakeSecureNetworkLayerParams = {
-      encryptionKey: material.encryptionKey,
+      encryptionKey: this.meshConfigurationManager.getEncryptionKey(),
       dst: nodeAddress,
       lowerTransportPDU: lowerTransportPDU,
       ctl: "00",
       ttl: "04",
       seq: 13,
       src: "0001",
-      ivIndex: "00000000",
+      ivIndex: this.meshConfigurationManager.getIvIndex(),
       nonceType: "network",
     };
     const securedNetworkPDU = pduBuilder.makeSecureNetworkLayer(securedNetworkPDUInputParams);
@@ -196,14 +202,14 @@ class ConfigClient {
       ttl: "04",
       seq: 13,
       src: "0001",
-      ivIndex: "00000000",
-      privacyKey: material.privacyKey,
+      ivIndex: this.meshConfigurationManager.getIvIndex(),
+      privacyKey: this.meshConfigurationManager.getPrivacyKey(),
     };
     const obfuscated = pduBuilder.obfuscateNetworkPDU(obfuscateNetworkPDUInputParams);
 
     const finalizedNetworkPDUInputParams: FinalizeNetworkPDUInput = {
-      ivi: 0,
-      nid: material.NID,
+      ivi: this.meshConfigurationManager.getIvi(),
+      nid: this.meshConfigurationManager.getNID(),
       obfuscated_ctl_ttl_seq_src: obfuscated.obfuscated_ctl_ttl_seq_src,
       encDst: securedNetworkPDU.EncDST,
       encTransportPdu: securedNetworkPDU.EncTransportPDU,
@@ -216,6 +222,71 @@ class ConfigClient {
     console.log(`sending config AppKey bind: ${proxyPDU}`);
     this.bluetoothManager.sendProxyPDU(proxyPDU);
   }
+
+  getCompositionData(nodeAddress: string, page: string, devKey: string) {
+    const accessPayload = pduBuilder.makeAccessPayload("8008", utils.swapHexEndianness(page));
+    const seq = this.meshConfigurationManager.getSeq();
+
+    const upperTransportPDUInputParams: MakeUpperTransportPDUParams = {
+      seq: seq,
+      src: "0001",
+      dst: nodeAddress,
+      ivIndex: this.meshConfigurationManager.getIvIndex(),
+      key: devKey,
+      accessPayload,
+      keyType: "device",
+    };
+    const upperTransportPDU = pduBuilder.makeUpperTransportPDU(upperTransportPDUInputParams);
+
+    const lowerTransportPDUInputParams: MakeLowerTransportPDUParams = {
+      AID: this.meshConfigurationManager.getAID(),
+      upperTransportPDU: upperTransportPDU,
+      isAppKey: false,
+    };
+    const lowerTransportPDU = pduBuilder.makeLowerTransportPDU(lowerTransportPDUInputParams);
+
+    const securedNetworkPDUInputParams: MakeSecureNetworkLayerParams = {
+      encryptionKey: this.meshConfigurationManager.getEncryptionKey(),
+      dst: nodeAddress,
+      lowerTransportPDU: lowerTransportPDU,
+      ctl: "00",
+      ttl: "04",
+      seq: seq,
+      src: "0001",
+      ivIndex: this.meshConfigurationManager.getIvIndex(),
+      nonceType: "network",
+    };
+    const securedNetworkPDU = pduBuilder.makeSecureNetworkLayer(securedNetworkPDUInputParams);
+
+    const obfuscateNetworkPDUInputParams: ObfuscateNetworkPDUInput = {
+      encryptedNetworkPayload: securedNetworkPDU,
+      ctl: "00",
+      ttl: "04",
+      seq: seq,
+      src: "0001",
+      ivIndex: this.meshConfigurationManager.getIvIndex(),
+      privacyKey: this.meshConfigurationManager.getPrivacyKey(),
+    };
+    const obfuscated = pduBuilder.obfuscateNetworkPDU(obfuscateNetworkPDUInputParams);
+
+    const finalizedNetworkPDUInputParams: FinalizeNetworkPDUInput = {
+      ivi: this.meshConfigurationManager.getIvi(),
+      nid: this.meshConfigurationManager.getNID(),
+      obfuscated_ctl_ttl_seq_src: obfuscated.obfuscated_ctl_ttl_seq_src,
+      encDst: securedNetworkPDU.EncDST,
+      encTransportPdu: securedNetworkPDU.EncTransportPDU,
+      netmic: securedNetworkPDU.NetMIC,
+    };
+    const finalizedNetworkPDU = pduBuilder.finalizeNetworkPDU(finalizedNetworkPDUInputParams);
+
+    const proxyPDU = pduBuilder.finalizeProxyPDU(finalizedNetworkPDU, MessageType.NETWORK_PDU);
+
+    console.log(`sending config get composition data: ${proxyPDU}`);
+    this.bluetoothManager.sendProxyPDU(proxyPDU);
+    this.meshConfigurationManager.updateSeq();
+  }
+
+  onConfigMessageReceived(pdu: ProxyPDU) {}
 
   private waitAndSendMessage(message: string, waitTime: number, log: string) {
     setTimeout(() => {

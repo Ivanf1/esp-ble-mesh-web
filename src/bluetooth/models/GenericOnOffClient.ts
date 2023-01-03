@@ -8,6 +8,7 @@ import {
 } from "../pduBuilder";
 import pduBuilder from "../pduBuilder";
 import utils from "../../utils/utils";
+import MeshConfigurationManager from "../MeshConfigurationManager";
 
 enum OpCode {
   GET = "8201",
@@ -25,11 +26,14 @@ interface GenericOnOffClientProps {
   NID: string;
   networkId: string;
   AID: string;
+  meshConfigurationManager: MeshConfigurationManager;
 }
 class GenericOnOffClient {
   private static ctl: string = "0";
   private static defaultTtl: string = "07";
   private static nonceType: "network" = "network";
+
+  private meshConfigurationManager: MeshConfigurationManager;
 
   private ivIndex: string = "";
   private appKey: string = "";
@@ -49,6 +53,12 @@ class GenericOnOffClient {
     this.privacyKey = configuration.privacyKey;
     this.NID = configuration.NID;
     this.AID = configuration.AID;
+    this.meshConfigurationManager = configuration.meshConfigurationManager;
+  }
+
+  public updateSeq() {
+    this.meshConfigurationManager.updateSeq();
+    console.log(this.meshConfigurationManager.getSeq());
   }
 
   public makeSetMessage(on: boolean, dst: string, seq: number, ttl?: string) {

@@ -285,7 +285,7 @@ const makeUpperTransportPDU = ({
   if (keyType == "app") {
     applicationNonce = makeApplicationNonce(seq, src, dst, ivIndex);
   } else {
-    applicationNonce = makeDeviceNonce(seq, src, dst, ivIndex);
+    applicationNonce = makeDeviceNonce(seq, src, dst, ivIndex, false);
   }
 
   const upperTransportPDU = crypto.authenticateEncryptAccessPayload(
@@ -310,7 +310,7 @@ const makeSegmentedUpperTransportPDU = ({
   if (keyType == "app") {
     applicationNonce = makeApplicationNonce(seq, src, dst, ivIndex);
   } else {
-    applicationNonce = makeDeviceNonce(seq, src, dst, ivIndex);
+    applicationNonce = makeDeviceNonce(seq, src, dst, ivIndex, false);
   }
 
   const upperTransportPDU = crypto.authenticateEncryptAccessPayload(
@@ -351,11 +351,17 @@ const makeApplicationNonce = (seq: number, src: string, dst: string, ivIndex: st
   return nonceType + aszmic + paddedSeq + src + dst + ivIndex;
 };
 
-const makeDeviceNonce = (seq: number, src: string, dst: string, ivIndex: string): string => {
+const makeDeviceNonce = (
+  seq: number,
+  src: string,
+  dst: string,
+  ivIndex: string,
+  segmented: boolean
+): string => {
   // Device nonce type
   const nonceType = "02";
-  // No segmentation
-  const aszmic = "00";
+
+  const aszmic = segmented ? "80" : "00";
   const paddedSeq = utils.toHex(seq, 3);
 
   return nonceType + aszmic + paddedSeq + src + dst + ivIndex;

@@ -378,14 +378,16 @@ const deobfuscate = (
   return result;
 };
 
-const decryptAndVerify = (key: string, cipher: string, nonce: string) => {
+const decryptAndVerify = (key: string, cipher: string, nonce: string, szmic: number) => {
+  // Param SZMIC can be 0 or 1. If it is 0 then SZMIC is 32 bits, 4 bytes.
+  // If it is 1 then SZMIC is 64 bits, 8 bytes.
   try {
     const decrypted = AES_CCM.decrypt(
       utils.hexToU8A(cipher),
       utils.hexToU8A(key),
       utils.hexToU8A(nonce),
       new Uint8Array([]),
-      4
+      szmic * 4 + 4
     );
     return utils.u8AToHexString(decrypted);
   } catch (error) {

@@ -1,15 +1,9 @@
 import utils from "../../utils/utils";
 import BluetoothManager from "../BluetoothManager";
 import crypto from "../crypto";
-import pduBuilder, {
-  FinalizeNetworkPDUInput,
-  MakeSecureNetworkLayerParams,
-  MakeSegmentedLowerTransportPDUParams,
-  MakeUpperTransportPDUParams,
-  MessageType,
-  ObfuscateNetworkPDUInput,
-} from "../pduBuilder";
-import { ProxyPDU } from "../pduParser";
+import MeshConfigurationManager from "../MeshConfigurationManager";
+import pduBuilder, { MessageType } from "../pduBuilder";
+import { AccessPayloadData, ProxyPDU } from "../PduParser";
 
 const TAG = "PROVISIONER";
 
@@ -50,9 +44,11 @@ interface NodeToProvision {
   };
   random: string;
   devKey: string;
+  unicastAddress: string;
 }
 interface ProvisionerProps {
   bluetoothManager: BluetoothManager;
+  meshConfigurationManager: MeshConfigurationManager;
 }
 class Provisioner {
   private nodeToProvision: NodeToProvision = {
@@ -70,6 +66,7 @@ class Provisioner {
     },
     random: "",
     devKey: "",
+    unicastAddress: "",
   };
   private confirmationMessageFields = {
     provisioningInvitePDUValue: "",
@@ -85,6 +82,7 @@ class Provisioner {
   private isProvisioning = false;
   private onProvisioningCompletedCallback: ((devKey: string) => void) | null;
   private bluetoothManager: BluetoothManager;
+  private meshConfigurationManager: MeshConfigurationManager;
 
   constructor(props: ProvisionerProps) {
     this.bluetoothManager = props.bluetoothManager;
@@ -93,6 +91,12 @@ class Provisioner {
       MessageType.PROVISIONING
     );
     this.onProvisioningCompletedCallback = null;
+    this.meshConfigurationManager = props.meshConfigurationManager;
+  }
+
+  public updateSeq() {
+    this.meshConfigurationManager.updateSeq();
+    console.log(this.meshConfigurationManager.getSeq());
   }
 
   private waitAndSendMessage(message: string, waitTime: number, log: string) {
@@ -100,6 +104,11 @@ class Provisioner {
       console.log(`${log}: ${message}`);
       this.bluetoothManager.sendProxyPDU(message);
     }, waitTime);
+  }
+
+  public getNode() {
+    console.log(this.nodeToProvision);
+    return this.nodeToProvision;
   }
 
   /**
@@ -256,11 +265,13 @@ class Provisioner {
 
     const sessionNonce = crypto.makeSessionNonce(this.ecdhSecret, provisioningSalt);
 
-    const netKey = "2C9C3BD30D717C1BAB6F20625A966245";
+    const netKey = this.meshConfigurationManager.getNetKey();
     const keyIndex = "0000";
     const flags = "00";
-    const ivIndex = "00000000";
+    const ivIndex = this.meshConfigurationManager.getIvIndex();
     const unicastAddress = "0003";
+
+    this.nodeToProvision.unicastAddress = "0003";
 
     // Provisioning Data = Network Key || Key Index || Flags || IV Index || Unicast Address
     const provisioningData = netKey + keyIndex + flags + ivIndex + unicastAddress;
@@ -281,155 +292,22 @@ class Provisioner {
     return pduBuilder.finalizeProxyPDU(pdu, MessageType.PROVISIONING);
   }
 
-  // makeConfigAppKeyAdd() {
-  //   const material = crypto.k2("2C9C3BD30D717C1BAB6F20625A966245", "00");
-  //   const accessPayload = pduBuilder.makeAccessPayload(
-  //     "00",
-  //     "000000" + "63964771734fbd76e3b40519d1d94a48"
-  //   );
-
-  //   const upperTransportPDUInputParams: MakeUpperTransportPDUParams = {
-  //     seq: 12,
-  //     src: "0001",
-  //     dst: "0003",
-  //     ivIndex: "00000000",
-  //     key: this.nodeToProvision.devKey,
-  //     accessPayload,
-  //     keyType: "device",
-  //   };
-  //   const [upperTransportPDUSeg0, upperTransportPDUSeg1] =
-  //     pduBuilder.makeSegmentedUpperTransportPDU(upperTransportPDUInputParams);
-
-  //   console.log(upperTransportPDUSeg0);
-  //   console.log(upperTransportPDUSeg1);
-
-  //   const lowerTransportPDUInputParamsSeg0: MakeSegmentedLowerTransportPDUParams = {
-  //     AID: "00",
-  //     upperTransportPDU: upperTransportPDUSeg0,
-  //     isAppKey: false,
-  //     segN: 1,
-  //     segO: 0,
-  //     seq: 12,
-  //   };
-  //   const lowerTransportPDUSeg0 = pduBuilder.makeSegmentedLowerTransportPDU(
-  //     lowerTransportPDUInputParamsSeg0
-  //   );
-  //   const lowerTransportPDUInputParamsSeg1: MakeSegmentedLowerTransportPDUParams = {
-  //     AID: "00",
-  //     upperTransportPDU: upperTransportPDUSeg1,
-  //     isAppKey: false,
-  //     segN: 1,
-  //     segO: 1,
-  //     seq: 12,
-  //   };
-  //   const lowerTransportPDUSeg1 = pduBuilder.makeSegmentedLowerTransportPDU(
-  //     lowerTransportPDUInputParamsSeg1
-  //   );
-
-  //   const securedNetworkPDUInputParamsSeg0: MakeSecureNetworkLayerParams = {
-  //     encryptionKey: material.encryptionKey,
-  //     dst: "0003",
-  //     lowerTransportPDU: lowerTransportPDUSeg0,
-  //     ctl: "00",
-  //     ttl: "04",
-  //     seq: 12,
-  //     src: "0001",
-  //     ivIndex: "00000000",
-  //     nonceType: "network",
-  //   };
-  //   const securedNetworkPDUSeg0 = pduBuilder.makeSecureNetworkLayer(
-  //     securedNetworkPDUInputParamsSeg0
-  //   );
-  //   const securedNetworkPDUInputParamsSeg1: MakeSecureNetworkLayerParams = {
-  //     encryptionKey: material.encryptionKey,
-  //     dst: "0003",
-  //     lowerTransportPDU: lowerTransportPDUSeg1,
-  //     ctl: "00",
-  //     ttl: "04",
-  //     seq: 12,
-  //     src: "0001",
-  //     ivIndex: "00000000",
-  //     nonceType: "network",
-  //   };
-  //   const securedNetworkPDUSeg1 = pduBuilder.makeSecureNetworkLayer(
-  //     securedNetworkPDUInputParamsSeg1
-  //   );
-
-  //   const obfuscateNetworkPDUInputParamsSeg0: ObfuscateNetworkPDUInput = {
-  //     encryptedNetworkPayload: securedNetworkPDUSeg0,
-  //     ctl: "00",
-  //     ttl: "04",
-  //     seq: 12,
-  //     src: "0001",
-  //     ivIndex: "00000000",
-  //     privacyKey: material.privacyKey,
-  //   };
-  //   const obfuscatedSeg0 = pduBuilder.obfuscateNetworkPDU(obfuscateNetworkPDUInputParamsSeg0);
-  //   const obfuscateNetworkPDUInputParamsSeg1: ObfuscateNetworkPDUInput = {
-  //     encryptedNetworkPayload: securedNetworkPDUSeg1,
-  //     ctl: "00",
-  //     ttl: "04",
-  //     seq: 12,
-  //     src: "0001",
-  //     ivIndex: "00000000",
-  //     privacyKey: material.privacyKey,
-  //   };
-  //   const obfuscatedSeg1 = pduBuilder.obfuscateNetworkPDU(obfuscateNetworkPDUInputParamsSeg1);
-
-  //   const finalizedNetworkPDUInputParamsSeg0: FinalizeNetworkPDUInput = {
-  //     ivi: 0,
-  //     nid: material.NID,
-  //     obfuscated_ctl_ttl_seq_src: obfuscatedSeg0.obfuscated_ctl_ttl_seq_src,
-  //     encDst: securedNetworkPDUSeg0.EncDST,
-  //     encTransportPdu: securedNetworkPDUSeg0.EncTransportPDU,
-  //     netmic: securedNetworkPDUSeg0.NetMIC,
-  //   };
-  //   const finalizedNetworkPDUSeg0 = pduBuilder.finalizeNetworkPDU(
-  //     finalizedNetworkPDUInputParamsSeg0
-  //   );
-  //   const finalizedNetworkPDUInputParamsSeg1: FinalizeNetworkPDUInput = {
-  //     ivi: 0,
-  //     nid: material.NID,
-  //     obfuscated_ctl_ttl_seq_src: obfuscatedSeg1.obfuscated_ctl_ttl_seq_src,
-  //     encDst: securedNetworkPDUSeg1.EncDST,
-  //     encTransportPdu: securedNetworkPDUSeg1.EncTransportPDU,
-  //     netmic: securedNetworkPDUSeg1.NetMIC,
-  //   };
-  //   const finalizedNetworkPDUSeg1 = pduBuilder.finalizeNetworkPDU(
-  //     finalizedNetworkPDUInputParamsSeg1
-  //   );
-
-  //   const proxyPDUSeg0 = pduBuilder.finalizeProxyPDU(
-  //     finalizedNetworkPDUSeg0,
-  //     MessageType.NETWORK_PDU
-  //   );
-  //   const proxyPDUSeg1 = pduBuilder.finalizeProxyPDU(
-  //     finalizedNetworkPDUSeg1,
-  //     MessageType.NETWORK_PDU
-  //   );
-
-  //   return [proxyPDUSeg0, proxyPDUSeg1];
-  // }
-
   private onProxyPDUReceived(proxyPDU: ProxyPDU) {
-    this.parseProvisionerPDU(proxyPDU.dataHex);
+    this.parseProvisionerPDU(proxyPDU.data);
   }
 
-  async parseProvisionerPDU(pdu: string) {
+  async parseProvisionerPDU(pdu: AccessPayloadData) {
     if (!this.isProvisioning) return;
 
-    const provisioningType = pdu.substring(0, 2) as ProvisioningType;
-    const data = pdu.substring(2);
-
-    switch (provisioningType) {
+    switch (pdu.opcode as ProvisioningType) {
       case ProvisioningType.CAPABILITIES:
         console.log(`${TAG}: received capabilities`);
-        this.parseCapabilitiesPDU(data);
+        this.parseCapabilitiesPDU(pdu.params);
 
         const sm = this.makeStartMessage();
         console.log(`${TAG}: sending start message: `);
         this.bluetoothManager.sendProxyPDU(sm);
-        // Wait for the previous message to be sent before sending another message
+        // Wait for the previous message to be sent before sending another message.
         this.waitAndSendMessage(
           await this.makePublicKeyMessage(),
           500,
@@ -439,7 +317,7 @@ class Provisioner {
 
       case ProvisioningType.PUBLIC_KEY:
         console.log(`${TAG}: received device public key`);
-        await this.parsePublicKeyPDU(data);
+        await this.parsePublicKeyPDU(pdu.params);
         await this.computeECDHSecret();
         const cm = this.makeConfirmationMessage();
         console.log(`${TAG}: sending confirmation message: ${cm}`);
@@ -447,15 +325,15 @@ class Provisioner {
         break;
 
       case ProvisioningType.CONFIRMATION:
-        console.log(`${TAG}: received confirmation message: ${data}`);
+        console.log(`${TAG}: received confirmation message: ${pdu.params}`);
         const pm = this.makeProvisioningRandom();
         console.log(`${TAG}: sending provisioning random: ${pm}`);
         this.bluetoothManager.sendProxyPDU(pm);
         break;
 
       case ProvisioningType.RANDOM:
-        console.log(`${TAG}: received device random: ${data}`);
-        this.parseRandomProvisioningDevice(data);
+        console.log(`${TAG}: received device random: ${pdu.params}`);
+        this.parseRandomProvisioningDevice(pdu.params);
 
         const pdm = this.makeProvisioningData();
         console.log(`${TAG}: sending provisioning data: ${pdm}`);
@@ -464,13 +342,18 @@ class Provisioner {
 
       case ProvisioningType.COMPLETE:
         console.log(`${TAG}: provisioning completed`);
+        this.meshConfigurationManager.addNode(
+          this.nodeToProvision.unicastAddress,
+          this.nodeToProvision.devKey,
+          parseInt(this.nodeToProvision.numberOfElements, 16)
+        );
         if (this.onProvisioningCompletedCallback) {
           this.onProvisioningCompletedCallback(this.nodeToProvision.devKey);
         }
         this.resetProvisioningInfo();
 
       case ProvisioningType.FAILED:
-        this.parseFailedReason(data as ProvisioningFailedReason);
+        this.parseFailedReason(pdu.params as ProvisioningFailedReason);
         break;
 
       default:
@@ -592,6 +475,7 @@ class Provisioner {
       },
       random: "",
       devKey: "",
+      unicastAddress: "",
     };
     this.confirmationMessageFields = {
       provisioningInvitePDUValue: "",
