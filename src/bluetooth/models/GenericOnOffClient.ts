@@ -56,11 +56,6 @@ class GenericOnOffClient {
     this.meshConfigurationManager = configuration.meshConfigurationManager;
   }
 
-  public updateSeq() {
-    this.meshConfigurationManager.updateSeq();
-    console.log(this.meshConfigurationManager.getSeq());
-  }
-
   public makeSetMessage(on: boolean, dst: string, seq: number, ttl?: string) {
     return this.makeMessage(OpCode.SET, on, dst, seq, ttl);
   }

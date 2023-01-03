@@ -6,10 +6,7 @@ import {
   MESH_PROXY_DATA_OUT,
   MESH_PROXY_SERVICE,
 } from "../constants/bluetooth";
-// import { LOCAL_STORAGE_SEQ_KEY } from "../constants/storageKeys";
-// import { MeshNetworkConfiguration } from "./meshConfiguration.interface";
 import utils from "../utils/utils";
-// import crypto from "./crypto";
 import { MessageType } from "./pduBuilder";
 import MeshConfigurationManager from "./MeshConfigurationManager";
 import PDUParser, { ProxyPDU } from "./PduParser";
@@ -157,8 +154,6 @@ class BluetoothManager {
     try {
       this.dataIn.writeValue(proxyPDUData.buffer);
       this.meshConfigurationManager.updateSeq();
-      // this.seq++;
-      // this.updateSequenceNumberInLocalStorage();
       console.log(`${TAG}: sent proxy pdu OK`);
     } catch (error) {
       console.log(`${TAG}: sending proxy pdu error: ` + error);

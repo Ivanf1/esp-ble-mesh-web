@@ -168,8 +168,6 @@ class ConfigClient {
       MessageType.NETWORK_PDU
     );
 
-    this.meshConfigurationManager.updateSeq();
-
     console.log(`sending config add AppKey seg0: ${proxyPDUSeg0}`);
     this.bluetoothManager.sendProxyPDU(proxyPDUSeg0);
     this.waitAndSendMessage(proxyPDUSeg1, 500, "sending config add AppKey seg1");
@@ -241,8 +239,6 @@ class ConfigClient {
     const finalizedNetworkPDU = pduBuilder.finalizeNetworkPDU(finalizedNetworkPDUInputParams);
 
     const proxyPDU = pduBuilder.finalizeProxyPDU(finalizedNetworkPDU, MessageType.NETWORK_PDU);
-
-    this.meshConfigurationManager.updateSeq();
 
     console.log(`sending config AppKey bind: ${proxyPDU}`);
     this.bluetoothManager.sendProxyPDU(proxyPDU);
@@ -324,8 +320,6 @@ class ConfigClient {
 
     const proxyPDU = pduBuilder.finalizeProxyPDU(finalizedNetworkPDU, MessageType.NETWORK_PDU);
 
-    this.meshConfigurationManager.updateSeq();
-
     console.log(`sending config model publication set: ${proxyPDU}`);
     this.bluetoothManager.sendProxyPDU(proxyPDU);
   }
@@ -402,8 +396,6 @@ class ConfigClient {
 
     const proxyPDU = pduBuilder.finalizeProxyPDU(finalizedNetworkPDU, MessageType.NETWORK_PDU);
 
-    this.meshConfigurationManager.updateSeq();
-
     console.log(`sending config model subscription add: ${proxyPDU}`);
     this.bluetoothManager.sendProxyPDU(proxyPDU);
   }
@@ -468,8 +460,6 @@ class ConfigClient {
     const finalizedNetworkPDU = pduBuilder.finalizeNetworkPDU(finalizedNetworkPDUInputParams);
 
     const proxyPDU = pduBuilder.finalizeProxyPDU(finalizedNetworkPDU, MessageType.NETWORK_PDU);
-
-    this.meshConfigurationManager.updateSeq();
 
     console.log(`sending config get composition data: ${proxyPDU}`);
     this.bluetoothManager.sendProxyPDU(proxyPDU);

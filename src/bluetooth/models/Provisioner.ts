@@ -46,6 +46,7 @@ interface NodeToProvision {
   devKey: string;
   unicastAddress: string;
 }
+
 interface ProvisionerProps {
   bluetoothManager: BluetoothManager;
   meshConfigurationManager: MeshConfigurationManager;
@@ -94,21 +95,11 @@ class Provisioner {
     this.meshConfigurationManager = props.meshConfigurationManager;
   }
 
-  public updateSeq() {
-    this.meshConfigurationManager.updateSeq();
-    console.log(this.meshConfigurationManager.getSeq());
-  }
-
   private waitAndSendMessage(message: string, waitTime: number, log: string) {
     setTimeout(() => {
       console.log(`${log}: ${message}`);
       this.bluetoothManager.sendProxyPDU(message);
     }, waitTime);
-  }
-
-  public getNode() {
-    console.log(this.nodeToProvision);
-    return this.nodeToProvision;
   }
 
   /**
@@ -127,7 +118,13 @@ class Provisioner {
    * 7) Provisioning Random (Provisioner). The Provisioner will now expose its random number used to
    *    generate its confirmation value that it has previously committed to.
    * 8) Provisioning Random (Device). The new device now sends its random number to the Provisioner.
-   *
+   * 9) Provisioning Data. The Provisioner can now provide the provisioning data required by the new
+   *    device to become a node in a mesh network. This includes a NetKey along with a network key index,
+   *    the current IV Index of this network key, and the unicast address of the first element of this
+   *    node, and therefore all the subsequent addresses of additional elements. This data is encrypted
+   *    and authenticated using a session key derived from the ECDH shared secret.
+   * 10) Provisioning Complete. The new device now indicates that it has successfully received and
+   *     processed the provisioning data.
    */
   startProvisioningProcess(onProvisioningCompleted?: (devKey: string) => void) {
     if (this.isProvisioning) return;
@@ -431,28 +428,28 @@ class Provisioner {
 
     switch (failureReason) {
       case ProvisioningFailedReason.INVALID_PDU:
-        console.log(`${TAG}: provisioning failed: invalid pdu`);
+        console.error(`${TAG}: provisioning failed: invalid pdu`);
         break;
       case ProvisioningFailedReason.INVALID_FORMAT:
-        console.log(`${TAG}: provisioning failed: invalid format`);
+        console.error(`${TAG}: provisioning failed: invalid format`);
         break;
       case ProvisioningFailedReason.UNEXPECTED_PDU:
-        console.log(`${TAG}: provisioning failed: unexpected pdu`);
+        console.error(`${TAG}: provisioning failed: unexpected pdu`);
         break;
       case ProvisioningFailedReason.CONFIRMATION_FAILED:
-        console.log(`${TAG}: provisioning failed: confirmation failed`);
+        console.error(`${TAG}: provisioning failed: confirmation failed`);
         break;
       case ProvisioningFailedReason.OUT_OF_RESOURCES:
-        console.log(`${TAG}: provisioning failed: out of resources`);
+        console.error(`${TAG}: provisioning failed: out of resources`);
         break;
       case ProvisioningFailedReason.DECRYPTION_FAILED:
-        console.log(`${TAG}: provisioning failed: decryption failed`);
+        console.error(`${TAG}: provisioning failed: decryption failed`);
         break;
       case ProvisioningFailedReason.UNEXPECTED_ERROR:
-        console.log(`${TAG}: provisioning failed: unexpected error`);
+        console.error(`${TAG}: provisioning failed: unexpected error`);
         break;
       case ProvisioningFailedReason.CANNOT_ASSIGN_ADDRESS:
-        console.log(`${TAG}: provisioning failed: cannot assign address`);
+        console.error(`${TAG}: provisioning failed: cannot assign address`);
         break;
       default:
         break;

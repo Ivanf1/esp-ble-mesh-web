@@ -129,16 +129,6 @@ const hexToArrayBuffer = (hex: string) => {
   return a.buffer;
 };
 
-const getLastXBits = (n: number, x: number) => {
-  const mask = 2 ** x - 1;
-  return n & mask;
-};
-
-const getFirstXBits = (n: number, x: number) => {
-  const mask = (2 ** x - 1) << (16 - x);
-  return n & mask;
-};
-
 const swapHexEndianness = (hex: string) => {
   if (hex.length % 2 != 0) {
     console.log("swap endianness error: hex string need to be even in length");
@@ -158,14 +148,6 @@ const swapHexEndianness = (hex: string) => {
   }
 
   return swapped;
-};
-
-const swapHexEndianness2 = (hex: string) => {
-  const r = hex.replace(/^(.(..)*)$/, "0$1");
-  const a = r.match(/../g);
-  a?.reverse();
-  a?.join("");
-  return a;
 };
 
 const splitHexStringChunksOfSizeX = (hex: string, x: number) => {
@@ -198,8 +180,6 @@ const utils = {
   U8ArrayToInt,
   arrayBufferToHex,
   hexToArrayBuffer,
-  getLastXBits,
-  getFirstXBits,
   swapHexEndianness,
   splitHexStringChunksOfSizeX,
 };

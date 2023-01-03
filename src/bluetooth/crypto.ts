@@ -290,7 +290,6 @@ const privacyRandom = (encDst: string, encTransportPdu: string, netmic: string) 
  * Refer to Mesh Profile Specification 3.8.7.3.
  *
  * Fields named like 'a_b_c' are result of concatenation of fields a, b and c.
- *
  */
 const obfuscate = function (
   encDst: any,

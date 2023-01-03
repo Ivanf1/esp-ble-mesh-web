@@ -23,7 +23,6 @@ const finalizeSegmentedProxyPDU = (
   messageType: MessageType,
   sarType: "first" | "continuation" | "last"
 ) => {
-  // No segmentation
   let sar;
   if (sarType == "first") {
     sar = 1;

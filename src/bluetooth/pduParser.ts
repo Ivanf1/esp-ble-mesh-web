@@ -70,7 +70,7 @@ class PDUParser {
 
     // Length validation
     if (pdu.length < 1) {
-      console.log("Error: No data received.");
+      console.error("Error: No data received.");
       return;
     }
 
@@ -82,7 +82,7 @@ class PDUParser {
     // SAR is contained within the first two bits.
     const sar = (sar_messageTypeInt & 0xc0) >> 6;
     if (sar != 0) {
-      console.log(
+      console.error(
         `Invalid value for SAR. Value is ${sar} but only 0x00 (Complete Message) is currently \
       supported.`
       );
@@ -163,7 +163,7 @@ class PDUParser {
         } as ProxyPDU;
 
       default:
-        console.log(
+        console.error(
           `Invalid value for Message Type. Value is ${messageType} but only 0x00 (Network PDU), \
         0x03 (Provisioning PDU) are currently supported.`
         );
@@ -230,7 +230,7 @@ class PDUParser {
     // message shall be ignored.
     // Refer to Mesh Profile Specification 3.4.6.3.
     if (utils.toHex(nidPdu, 1) !== this.meshManager.getNID()) {
-      console.log(
+      console.error(
         `Unknown NID ${utils.toHex(nidPdu, 1)}, application's NID: ${this.meshManager.getNID()}. \
         Discarding message.`
       );
@@ -251,7 +251,7 @@ class PDUParser {
 
     // Refer to Mesh Profile Specification 3.5.2 Table 3.9.
     if (ctlInt != 0) {
-      console.log(
+      console.error(
         `Invalid value for CTL. Value is ${ctlInt} but only 0 (Unsegmented/Segmented Access \
       Message) is currently supported.`
       );
@@ -284,7 +284,7 @@ class PDUParser {
       ctlInt // CTL indicates the size of NetMIC
     );
     if (!decryptedNetworkData) {
-      console.log("Network data decryption failed.");
+      console.error("Network data decryption failed.");
       return;
     }
 
@@ -327,7 +327,7 @@ class PDUParser {
       // the AKF field shall be set to 1 and the AID field shall be set to the application key identifier (AID). If the
       // device key is used, then the AKF field shall be set to 0 and the AID field shall be set to 0b000000.
       // Refer to Mesh Profile Specification 3.6.4.1.
-      console.log(`Invalid LowerTransportPDU header: AKF is 0 but AID is not 0b000000`);
+      console.error(`Invalid LowerTransportPDU header: AKF is 0 but AID is not 0b000000`);
       return;
     }
 
@@ -407,7 +407,7 @@ class PDUParser {
       0
     );
     if (!decryptedAccessPayload) {
-      console.log("access payload decryption failed.");
+      console.error("access payload decryption failed.");
       return;
     }
 
@@ -465,7 +465,7 @@ class PDUParser {
     // Minimum valid size for an Access Payload is 1 octet.
     // Refer to Mesh Profile Specification 3.7.3.
     if (accessPayload.length < 2) {
-      console.log(
+      console.error(
         `Invalid length for Access Payload. Length is ${accessPayload.length} but min length \
       is 2 (1 octet).`
       );
@@ -474,7 +474,7 @@ class PDUParser {
     // Maximum valid size for an Access Payload is 380 octets.
     // Refer to Mesh Profile Specification 3.7.3.
     if (accessPayload.length > 190) {
-      console.log(
+      console.error(
         `Invalid length for Access Payload. Length is ${accessPayload.length} but max length \
       is 190 (380 octets).`
       );
@@ -492,7 +492,7 @@ class PDUParser {
     // is not currently supported.
     // Refer to Mesh Profile Specification 3.7.3.1 Table 3.43.
     if ((firstOctetOfOpcode & 0x7f) == 0x7f) {
-      console.log("Opcode value is reserved for future use.");
+      console.error("Opcode value is reserved for future use.");
       return;
     }
 
