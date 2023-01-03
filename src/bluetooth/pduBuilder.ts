@@ -213,15 +213,16 @@ const makeSegmentedLowerTransportPDU = ({
   const akfInt = parseInt(akf, 16);
   const aidInt = parseInt(AID, 16);
 
-  const seqZero = utils.getLastXBits(seq!, 13);
+  // const seqZero = utils.getLastXBits(seq!, 13);
+  const seqZero = seq & 0x1fff;
 
-  const octet1 = utils.getFirstXBits(seqZero, 7);
+  const octet1 = seqZero >> 6;
   const octet1Hex = utils.toHex(octet1, 1);
 
-  const octet2 = (utils.getLastXBits(seqZero, 6) << 2) | utils.getFirstXBits(segO, 2);
+  const octet2 = ((seqZero & 0x3f) << 2) | (segO >> 3);
   const octet2Hex = utils.toHex(octet2, 1);
 
-  const octet3 = (utils.getLastXBits(segO, 3) << 5) | segN;
+  const octet3 = ((segO & 0x7) << 5) | segN;
   const octet3Hex = utils.toHex(octet3, 1);
 
   const octet0 = (segInt << 7) | (akfInt << 6) | aidInt;

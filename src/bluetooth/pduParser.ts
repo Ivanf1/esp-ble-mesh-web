@@ -116,8 +116,6 @@ class PDUParser {
           const segments = this.segmentsMap.getSegments(key);
           const segmentsPayload = segments?.map((s) => s.upperTransportAccessPDU);
 
-          console.log(this.meshManager.getNodeDevKey(parsedNetworkPDU.src));
-
           const ap = this.reassembleSegmentedAccessPayload(
             segmentsPayload!,
             lowerTransportPDU.akf
@@ -233,10 +231,8 @@ class PDUParser {
     // Refer to Mesh Profile Specification 3.4.6.3.
     if (utils.toHex(nidPdu, 1) !== this.meshManager.getNID()) {
       console.log(
-        `Unknown NID ${utils.toHex(
-          nidPdu,
-          1
-        )}, application's NID: ${this.meshManager.getNID()}. Discarding message.`
+        `Unknown NID ${utils.toHex(nidPdu, 1)}, application's NID: ${this.meshManager.getNID()}. \
+        Discarding message.`
       );
       return;
     }

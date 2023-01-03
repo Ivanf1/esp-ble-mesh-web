@@ -1,3 +1,4 @@
+import { on } from "events";
 import { useRef, useState } from "react";
 import BluetoothManager from "./bluetooth/BluetoothManager";
 import MeshConfigurationManager from "./bluetooth/MeshConfigurationManager";
@@ -32,7 +33,6 @@ function App() {
   const connectionButtonRef = useRef<HTMLButtonElement | null>(null);
   const ledStatusRef = useRef<HTMLParagraphElement | null>(null);
   const [connected, setConnected] = useState<boolean>(false);
-  const [devKey, setDevKey] = useState<string>("");
 
   const handleConnection = async () => {
     if (connected) {
@@ -48,7 +48,7 @@ function App() {
       if (connectionButtonRef.current) {
         connectionButtonRef.current.innerHTML = "disconnect";
       }
-      // configClient.addAppKey("0003", devKey);
+      configClient.addAppKey("0003");
 
       // const blacklistFilterPDU = proxyConfigurationClient.makeBlacklistFilterPDU(
       //   bluetoothManager.getCurrentSeq()
@@ -77,8 +77,12 @@ function App() {
   };
 
   const sendMessage = (onOff: boolean) => {
-    // configClient.modelAppKeyBind("0003", "0004", devKey, "1000");
-    configClient.getCompositionData("0003", "00", devKey);
+    if (onOff) {
+      configClient.modelAppKeyBind("0003", "0004", "1000");
+    } else {
+      configClient.modelPublicationSet("0003", "0004", "c000", "1000");
+    }
+    // configClient.getCompositionData("0003", "00", devKey);
     // configClient.parseCompositionData(
     //   "00646b11fef156b29313fdbc57bc9873fde4570883b9ecc787ad75f3376a"
     // );
@@ -108,7 +112,6 @@ function App() {
 
   const onProvisioningCompleted = (devKey: string) => {
     bluetoothManager.disconnect();
-    setDevKey(devKey);
   };
 
   return (
@@ -133,7 +136,18 @@ function App() {
         >
           on
         </button>
-        <button className="mt-4 px-8 py-2 rounded-md text-white bg-red-600">off</button>
+        <button
+          className="mt-4 px-8 py-2 rounded-md text-white bg-red-600"
+          onClick={() => sendMessage(false)}
+        >
+          off
+        </button>
+        <button
+          className="mt-4 px-8 py-2 rounded-md text-white bg-red-600"
+          onClick={() => configClient.modelSubscriptionAdd("0003", "0004", "c001", "1000")}
+        >
+          off
+        </button>
         <p ref={ledStatusRef}></p>
       </div>
     </div>
