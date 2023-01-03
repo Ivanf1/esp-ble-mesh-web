@@ -46,6 +46,11 @@ interface NodeToProvision {
   devKey: string;
   unicastAddress: string;
 }
+export interface ProvisioningResult {
+  error: boolean;
+  message?: string; // only set if [error] is true
+}
+type ProvisioningResultCallback = (result: ProvisioningResult) => void;
 
 interface ProvisionerProps {
   bluetoothManager: BluetoothManager;
@@ -81,7 +86,7 @@ class Provisioner {
   private randomProvisioner = "";
 
   private isProvisioning = false;
-  private onProvisioningCompletedCallback: ((devKey: string) => void) | null;
+  private onProvisioningResultCallback: ProvisioningResultCallback | null;
   private bluetoothManager: BluetoothManager;
   private meshConfigurationManager: MeshConfigurationManager;
 
@@ -91,7 +96,7 @@ class Provisioner {
       (pdu) => this.onProxyPDUReceived(pdu),
       MessageType.PROVISIONING
     );
-    this.onProvisioningCompletedCallback = null;
+    this.onProvisioningResultCallback = null;
     this.meshConfigurationManager = props.meshConfigurationManager;
   }
 
@@ -126,10 +131,10 @@ class Provisioner {
    * 10) Provisioning Complete. The new device now indicates that it has successfully received and
    *     processed the provisioning data.
    */
-  startProvisioningProcess(onProvisioningCompleted?: (devKey: string) => void) {
+  public startProvisioningProcess(onProvisioningResult?: ProvisioningResultCallback) {
     if (this.isProvisioning) return;
-    if (onProvisioningCompleted) {
-      this.onProvisioningCompletedCallback = onProvisioningCompleted;
+    if (onProvisioningResult) {
+      this.onProvisioningResultCallback = onProvisioningResult;
     }
     this.isProvisioning = true;
     this.publicKeyHex = "";
@@ -276,7 +281,7 @@ class Provisioner {
     this.parseProvisionerPDU(proxyPDU.data);
   }
 
-  async parseProvisionerPDU(pdu: AccessPayloadData) {
+  private async parseProvisionerPDU(pdu: AccessPayloadData) {
     if (!this.isProvisioning) return;
 
     switch (pdu.opcode as ProvisioningType) {
@@ -327,8 +332,10 @@ class Provisioner {
           this.nodeToProvision.devKey,
           parseInt(this.nodeToProvision.numberOfElements, 16)
         );
-        if (this.onProvisioningCompletedCallback) {
-          this.onProvisioningCompletedCallback(this.nodeToProvision.devKey);
+        if (this.onProvisioningResultCallback) {
+          this.onProvisioningResultCallback({
+            error: false,
+          });
         }
         this.resetProvisioningInfo();
 
@@ -381,34 +388,50 @@ class Provisioner {
 
   private parseFailedReason(failureReason: ProvisioningFailedReason) {
     this.resetProvisioningInfo();
+    let message = "";
 
     switch (failureReason) {
       case ProvisioningFailedReason.INVALID_PDU:
         console.error(`${TAG}: provisioning failed: invalid pdu`);
+        message = "invalid pdu";
         break;
       case ProvisioningFailedReason.INVALID_FORMAT:
         console.error(`${TAG}: provisioning failed: invalid format`);
+        message = "invalid format";
         break;
       case ProvisioningFailedReason.UNEXPECTED_PDU:
         console.error(`${TAG}: provisioning failed: unexpected pdu`);
+        message = "unexpected pdu";
         break;
       case ProvisioningFailedReason.CONFIRMATION_FAILED:
         console.error(`${TAG}: provisioning failed: confirmation failed`);
+        message = "confirmation failed";
         break;
       case ProvisioningFailedReason.OUT_OF_RESOURCES:
         console.error(`${TAG}: provisioning failed: out of resources`);
+        message = "out of resources";
         break;
       case ProvisioningFailedReason.DECRYPTION_FAILED:
         console.error(`${TAG}: provisioning failed: decryption failed`);
+        message = "decryption failed";
         break;
       case ProvisioningFailedReason.UNEXPECTED_ERROR:
         console.error(`${TAG}: provisioning failed: unexpected error`);
+        message = "unexpected error";
         break;
       case ProvisioningFailedReason.CANNOT_ASSIGN_ADDRESS:
         console.error(`${TAG}: provisioning failed: cannot assign address`);
+        message = "cannot assign address";
         break;
       default:
         break;
+    }
+
+    if (this.onProvisioningResultCallback) {
+      this.onProvisioningResultCallback({
+        error: true,
+        message: message,
+      });
     }
   }
 

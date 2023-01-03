@@ -20,26 +20,13 @@ interface ServiceAndCharacteristics {
   dataIn: string;
   dataOut: string;
 }
+
 interface BluetoothManagerProps {
   meshConfigurationManager: MeshConfigurationManager;
 }
 class BluetoothManager {
   private meshConfigurationManager: MeshConfigurationManager;
   private pduParser: PDUParser;
-
-  private ivIndex: string = "";
-  private netKey: string = "";
-  private appKey: string = "";
-  private src: string = "";
-  private seq: number = 0;
-
-  // Derived
-  private ivi: number = 0;
-  private encryptionKey: string = "";
-  private privacyKey: string = "";
-  private NID: string = "";
-  private networkId: string = "";
-  private AID: string = "";
 
   private device: BluetoothDevice | null = null;
   private dataIn: BluetoothRemoteGATTCharacteristic | null = null;
@@ -55,7 +42,6 @@ class BluetoothManager {
     this.meshConfigurationManager = configuration.meshConfigurationManager;
     this.pduParser = PDUParser.getInstance(configuration.meshConfigurationManager);
 
-    this.src = "0001";
     this.proxyPDUNotificationCallbacks = new Map();
     this.serviceAndCharacteristicsForConnectionType = new Map();
     this.serviceAndCharacteristicsForConnectionType.set("provisioning", {
@@ -70,26 +56,7 @@ class BluetoothManager {
     });
   }
 
-  getConfiguration() {
-    return {
-      ivIndex: this.ivIndex,
-      netKey: this.netKey,
-      appKey: this.appKey,
-      src: this.src,
-      ivi: this.ivi,
-      networkId: this.networkId,
-      AID: this.AID,
-      encryptionKey: this.encryptionKey,
-      privacyKey: this.privacyKey,
-      NID: this.NID,
-    };
-  }
-
-  getCurrentSeq() {
-    return this.seq;
-  }
-
-  async connect(connectionType: ConnectionType) {
+  public async connect(connectionType: ConnectionType) {
     const serviceAndCharacteristicsUUID =
       this.serviceAndCharacteristicsForConnectionType.get(connectionType);
     if (!serviceAndCharacteristicsUUID) return;
@@ -138,7 +105,7 @@ class BluetoothManager {
     }
   }
 
-  disconnect() {
+  public disconnect() {
     if (!this.device) return;
     this.device.gatt?.disconnect();
 
@@ -147,7 +114,7 @@ class BluetoothManager {
     this.dataOut = null;
   }
 
-  sendProxyPDU(proxyPDU: string) {
+  public sendProxyPDU(proxyPDU: string) {
     if (!this.dataIn) return;
     const proxyPDUBytes = utils.hexToBytes(proxyPDU);
     const proxyPDUData = new Uint8Array(proxyPDUBytes);
@@ -160,7 +127,7 @@ class BluetoothManager {
     }
   }
 
-  registerProxyPDUNotificationCallback = (
+  public registerProxyPDUNotificationCallback = (
     callback: ProxyPDUNotificationCallback,
     messageType: MessageType
   ) => {
@@ -171,6 +138,11 @@ class BluetoothManager {
       this.proxyPDUNotificationCallbacks.set(messageType, [callback]);
     }
   };
+
+  public registerDisconnectedCallback(callback: (e: Event) => void) {
+    if (!this.device) return;
+    this.device.addEventListener("gattserverdisconnected", callback);
+  }
 
   private proxyPDUNotificationDispatcher(e: Event) {
     const parsedPDU = this.parseReceivedProxyPDU(e);
@@ -189,11 +161,6 @@ class BluetoothManager {
     if (value) {
       return this.pduParser.parsePDU(new Uint8Array(value.buffer));
     }
-  }
-
-  registerDisconnectedCallback(callback: (e: Event) => void) {
-    if (!this.device) return;
-    this.device.addEventListener("gattserverdisconnected", callback);
   }
 
   private async doConnect(device: BluetoothDevice) {

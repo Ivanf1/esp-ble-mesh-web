@@ -4,7 +4,7 @@ import BluetoothManager from "./bluetooth/BluetoothManager";
 import MeshConfigurationManager from "./bluetooth/MeshConfigurationManager";
 import ConfigClient from "./bluetooth/models/ConfigClient";
 import GenericOnOffClient from "./bluetooth/models/GenericOnOffClient";
-import Provisioner from "./bluetooth/models/Provisioner";
+import Provisioner, { ProvisioningResult } from "./bluetooth/models/Provisioner";
 import ProxyConfigurationClient from "./bluetooth/models/ProxyConfigurationClient";
 // import { ParsedProxyPDU } from "./bluetooth/PduParser";
 import { CONFIGURATION_API } from "./constants/bluetooth";
@@ -17,16 +17,13 @@ meshConfigurationManager.initialize();
 const bluetoothManager = new BluetoothManager({
   meshConfigurationManager,
 });
+
 const provisioner = new Provisioner({ bluetoothManager, meshConfigurationManager });
 const configClient = new ConfigClient({ bluetoothManager, meshConfigurationManager });
-
-// await bluetoothManager.initialize();
-const onOffClient = new GenericOnOffClient({
-  ...bluetoothManager.getConfiguration(),
-  meshConfigurationManager,
-});
+const onOffClient = new GenericOnOffClient({ bluetoothManager, meshConfigurationManager });
 const proxyConfigurationClient = new ProxyConfigurationClient({
-  ...bluetoothManager.getConfiguration(),
+  bluetoothManager,
+  meshConfigurationManager,
 });
 
 function App() {
@@ -65,7 +62,7 @@ function App() {
       // bluetoothManager.registerProxyPDUNotificationCallback(onProxyMessageReceived);
       bluetoothManager.registerDisconnectedCallback(onDisconnected);
       // bluetoothManager.sendProxyPDU(provisioner.makeInviteMessage());
-      provisioner!.startProvisioningProcess(onProvisioningCompleted);
+      provisioner!.startProvisioningProcess(onProvisioningResult);
     }
   };
 
@@ -84,22 +81,6 @@ function App() {
       configClient.modelPublicationSet("0002", "0003", "c000", "1000");
     }
     // configClient.getCompositionData("0003", "00", devKey);
-    // configClient.parseCompositionData(
-    //   "00646b11fef156b29313fdbc57bc9873fde4570883b9ecc787ad75f3376a"
-    // );
-    // configClient.parseCompositionData(
-    //   "00647f3607f71ebf72ed682f818428f6a17e688ea4a159e9bea19438565d"
-    // );
-    // configClient.parseCompositionData(
-    //   "00644aa799687f28773c2b98b6975d90569cd18fc906daed172d1931dc79"
-    // );
-    // configClient.parseCompositionData("0064155dd09a1db400838c5be6efaa436a6acf2a654a");
-    // if (!connected) return;
-    // const proxyPUD = onOffClient.makeSetUnackMessage(
-    //   onOff,
-    //   "c000",
-    //   bluetoothManager.getCurrentSeq()
-    // );
     // bluetoothManager.sendProxyPDU(proxyPUD);
     // provisioner.makeConfigAppKeyAdd();
   };
@@ -111,7 +92,7 @@ function App() {
     }
   };
 
-  const onProvisioningCompleted = (devKey: string) => {
+  const onProvisioningResult = (result: ProvisioningResult) => {
     bluetoothManager.disconnect();
   };
 
