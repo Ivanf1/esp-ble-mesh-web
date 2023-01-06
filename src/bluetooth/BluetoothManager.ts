@@ -7,7 +7,7 @@ import {
   MESH_PROXY_SERVICE,
 } from "../constants/bluetooth";
 import utils from "../utils/utils";
-import { MessageType } from "./pduBuilder";
+import { MessageType } from "./PduBuilder";
 import MeshConfigurationManager from "./MeshConfigurationManager";
 import PDUParser, { ProxyPDU } from "./PduParser";
 

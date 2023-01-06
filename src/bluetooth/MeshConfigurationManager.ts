@@ -1,4 +1,4 @@
-import { LOCAL_STORAGE_SEQ_KEY } from "../constants/storageKeys";
+import { SEQ_KEY, MESH_CONFIGURATION_KEY } from "../constants/storageKeys";
 import { MeshNetworkConfiguration, ProvisionedNodeElement } from "./meshConfiguration.interface";
 import utils from "../utils/utils";
 import crypto from "./crypto";
@@ -51,7 +51,12 @@ class MeshConfigurationManager {
     //   console.log(`could not retrieve mesh configuration`);
     //   return;
     // }
-    this.newMeshConfiguration();
+    if (this.getMeshConfiguration()) {
+      this.meshConfiguration = this.getMeshConfiguration();
+    } else {
+      this.newMeshConfiguration();
+      this.storeMeshConfiguration();
+    }
 
     // this.meshConfiguration = data;
 
@@ -134,7 +139,7 @@ class MeshConfigurationManager {
   }
 
   public addNode(unicastAddress: string, devKey: string, elementsNum: number) {
-    const elements = new Array(elementsNum).map((_, i) => {
+    const elements = Array.from({ length: elementsNum }, (_, i) => {
       return {
         index: i,
         location: "",
@@ -158,6 +163,8 @@ class MeshConfigurationManager {
       UUID: crypto.generateUUID(),
       defaultTTL: 5,
     });
+
+    this.storeMeshConfiguration();
   }
 
   public addNodeComposition(nodeUnicastAddress: string, nodeComposition: NodeComposition) {
@@ -215,7 +222,8 @@ class MeshConfigurationManager {
         {
           boundNetKey: 0,
           index: 0,
-          key: crypto.generateMeshKey(),
+          // key: crypto.generateMeshKey(),
+          key: "45f2c17c294b0e2d3481c08eff9dc64b",
           name: "App Key 1",
         },
       ],
@@ -226,7 +234,8 @@ class MeshConfigurationManager {
       netKeys: [
         {
           index: 0,
-          key: crypto.generateMeshKey(),
+          // key: crypto.generateMeshKey(),
+          key: "0aec1a4fcff878cfaf8cef747b0e8d00",
           minSecurity: "secure",
           name: "Primary Network Key",
           phase: 0,
@@ -297,12 +306,20 @@ class MeshConfigurationManager {
   }
 
   private getSequenceNumberFromLocalStorage = () => {
-    const seq = localStorage.getItem(LOCAL_STORAGE_SEQ_KEY);
+    const seq = localStorage.getItem(SEQ_KEY);
     return seq ? JSON.parse(seq) : 0;
   };
 
   private updateSequenceNumberInLocalStorage = () => {
-    localStorage.setItem(LOCAL_STORAGE_SEQ_KEY, JSON.stringify(this.seq));
+    localStorage.setItem(SEQ_KEY, JSON.stringify(this.seq));
+  };
+
+  private storeMeshConfiguration = () => {
+    localStorage.setItem(MESH_CONFIGURATION_KEY, JSON.stringify(this.meshConfiguration));
+  };
+  private getMeshConfiguration = () => {
+    const mesh = localStorage.getItem(MESH_CONFIGURATION_KEY);
+    return mesh ? JSON.parse(mesh) : null;
   };
 }
 

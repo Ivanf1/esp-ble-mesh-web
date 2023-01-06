@@ -45,8 +45,7 @@ function App() {
       if (connectionButtonRef.current) {
         connectionButtonRef.current.innerHTML = "disconnect";
       }
-      console.log("config client call");
-      configClient.addAppKey("0002");
+      // configClient.addAppKey("0002");
 
       // const blacklistFilterPDU = proxyConfigurationClient.makeBlacklistFilterPDU(
       //   bluetoothManager.getCurrentSeq()
@@ -75,11 +74,11 @@ function App() {
   };
 
   const sendMessage = (onOff: boolean) => {
-    if (onOff) {
-      configClient.modelAppKeyBind("0002", "0003", "1000");
-    } else {
-      configClient.modelPublicationSet("0002", "0003", "c000", "1000");
-    }
+    // if (onOff) {
+    //   configClient.modelAppKeyBind("0002", "0003", "1000");
+    // } else {
+    //   configClient.modelPublicationSet("0002", "0003", "c000", "1000");
+    // }
     // configClient.getCompositionData("0003", "00", devKey);
     // bluetoothManager.sendProxyPDU(proxyPUD);
     // provisioner.makeConfigAppKeyAdd();
@@ -114,21 +113,39 @@ function App() {
         </button>
         <button
           className="mt-4 px-8 py-2 rounded-md text-white bg-green-600"
-          onClick={() => sendMessage(true)}
+          onClick={() => configClient.addAppKey("0002")}
         >
-          on
+          server add app key
+        </button>
+        <button
+          className="mt-4 px-8 py-2 rounded-md text-white bg-green-600"
+          onClick={() => configClient.addAppKey("0005")}
+        >
+          client add app key
         </button>
         <button
           className="mt-4 px-8 py-2 rounded-md text-white bg-red-600"
-          onClick={() => sendMessage(false)}
+          onClick={() => configClient.modelAppKeyBind("0002", "0003", "1000")}
         >
-          off
+          bind server
         </button>
         <button
           className="mt-4 px-8 py-2 rounded-md text-white bg-red-600"
-          onClick={() => configClient.modelSubscriptionAdd("0002", "0003", "c001", "1000")}
+          onClick={() => configClient.modelAppKeyBind("0005", "0005", "1001")}
         >
-          off
+          bind client
+        </button>
+        <button
+          className="mt-4 px-8 py-2 rounded-md text-white bg-red-600"
+          onClick={() => configClient.modelSubscriptionAdd("0002", "0003", "c000", "1000")}
+        >
+          sub add
+        </button>
+        <button
+          className="mt-4 px-8 py-2 rounded-md text-white bg-red-600"
+          onClick={() => configClient.modelPublicationSet("0005", "0005", "c000", "1001")}
+        >
+          pub set
         </button>
         <p ref={ledStatusRef}></p>
       </div>

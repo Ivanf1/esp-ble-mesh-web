@@ -1,8 +1,9 @@
 import crypto from "./crypto";
 import utils from "../utils/utils";
-import pduBuilder, { MessageType } from "./pduBuilder";
+import { MessageType } from "./PduBuilder";
 import SegmentsMap from "./SegmentsMap";
 import MeshConfigurationManager from "./MeshConfigurationManager";
+import PDUBuilder from "./PduBuilder";
 
 /**
  * Naming convention.
@@ -48,10 +49,12 @@ class PDUParser {
 
   private segmentsMap: SegmentsMap;
   private meshManager: MeshConfigurationManager;
+  private PDUBuilder: PDUBuilder;
 
-  constructor(meshManager: MeshConfigurationManager) {
+  private constructor(meshManager: MeshConfigurationManager) {
     this.segmentsMap = SegmentsMap.getInstance();
     this.meshManager = meshManager;
+    this.PDUBuilder = PDUBuilder.getInstance();
   }
 
   public static getInstance(meshManager: MeshConfigurationManager) {
@@ -424,14 +427,14 @@ class PDUParser {
   ) {
     let nonce = "";
     if (keyType == "application") {
-      nonce = pduBuilder.makeApplicationNonce(
+      nonce = this.PDUBuilder.makeApplicationNonce(
         parseInt(seq, 16),
         src,
         dst,
         this.meshManager.getIvIndex()
       );
     } else {
-      nonce = pduBuilder.makeDeviceNonce(
+      nonce = this.PDUBuilder.makeDeviceNonce(
         parseInt(seq, 16),
         src,
         dst,

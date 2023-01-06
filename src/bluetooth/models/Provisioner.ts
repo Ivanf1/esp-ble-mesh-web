@@ -1,8 +1,7 @@
-import utils from "../../utils/utils";
 import BluetoothManager from "../BluetoothManager";
 import crypto from "../crypto";
 import MeshConfigurationManager from "../MeshConfigurationManager";
-import pduBuilder, { MessageType } from "../pduBuilder";
+import PDUBuilder, { MessageType } from "../PduBuilder";
 import { AccessPayloadData, ProxyPDU } from "../PduParser";
 
 const TAG = "PROVISIONER";
@@ -90,6 +89,8 @@ class Provisioner {
   private bluetoothManager: BluetoothManager;
   private meshConfigurationManager: MeshConfigurationManager;
 
+  private PDUBuilder: PDUBuilder;
+
   constructor(props: ProvisionerProps) {
     this.bluetoothManager = props.bluetoothManager;
     this.bluetoothManager.registerProxyPDUNotificationCallback(
@@ -98,6 +99,7 @@ class Provisioner {
     );
     this.onProvisioningResultCallback = null;
     this.meshConfigurationManager = props.meshConfigurationManager;
+    this.PDUBuilder = PDUBuilder.getInstance();
   }
 
   private waitAndSendMessage(message: string, waitTime: number, log: string) {
@@ -147,7 +149,7 @@ class Provisioner {
   private makeInviteMessage(): string {
     const attentionDuration = "00";
     this.confirmationMessageFields.provisioningInvitePDUValue = attentionDuration;
-    return pduBuilder.finalizeProxyPDU(
+    return this.PDUBuilder.finalizeProxyPDU(
       ProvisioningType.INVITE + attentionDuration,
       MessageType.PROVISIONING
     );
@@ -182,7 +184,7 @@ class Provisioner {
 
     const pdu = ProvisioningType.START + data;
 
-    return pduBuilder.finalizeProxyPDU(pdu, MessageType.PROVISIONING);
+    return this.PDUBuilder.finalizeProxyPDU(pdu, MessageType.PROVISIONING);
   }
 
   private async makePublicKeyMessage() {
@@ -194,7 +196,7 @@ class Provisioner {
 
     const pdu = ProvisioningType.PUBLIC_KEY + this.publicKeyHex;
 
-    return pduBuilder.finalizeProxyPDU(pdu, MessageType.PROVISIONING);
+    return this.PDUBuilder.finalizeProxyPDU(pdu, MessageType.PROVISIONING);
   }
 
   /**
@@ -226,12 +228,12 @@ class Provisioner {
 
     const pdu = ProvisioningType.CONFIRMATION + confirmationProvisioner;
 
-    return pduBuilder.finalizeProxyPDU(pdu, MessageType.PROVISIONING);
+    return this.PDUBuilder.finalizeProxyPDU(pdu, MessageType.PROVISIONING);
   }
 
   private makeProvisioningRandom() {
     const pdu = ProvisioningType.RANDOM + this.randomProvisioner;
-    return pduBuilder.finalizeProxyPDU(pdu, MessageType.PROVISIONING);
+    return this.PDUBuilder.finalizeProxyPDU(pdu, MessageType.PROVISIONING);
   }
 
   private makeProvisioningData() {
@@ -274,7 +276,7 @@ class Provisioner {
       encProvisioningData.encProvisioningData +
       encProvisioningData.provisioningDataMIC;
 
-    return pduBuilder.finalizeProxyPDU(pdu, MessageType.PROVISIONING);
+    return this.PDUBuilder.finalizeProxyPDU(pdu, MessageType.PROVISIONING);
   }
 
   private onProxyPDUReceived(proxyPDU: ProxyPDU) {

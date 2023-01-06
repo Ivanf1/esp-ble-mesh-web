@@ -1,11 +1,6 @@
 import BluetoothManager from "../BluetoothManager";
 import MeshConfigurationManager from "../MeshConfigurationManager";
-import pduBuilder, {
-  MakeSecureNetworkLayerParams,
-  ObfuscateNetworkPDUInput,
-  FinalizeNetworkPDUInput,
-  MessageType,
-} from "../pduBuilder";
+import PDUBuilder, { MessageType } from "../PduBuilder";
 
 enum OpCode {
   SET_FILTER_TYPE = "00",
@@ -26,55 +21,32 @@ class ProxyConfigurationClient {
 
   private bluetoothManager: BluetoothManager;
   private meshConfigurationManager: MeshConfigurationManager;
+  private PDUBuilder: PDUBuilder;
 
   constructor(configuration: ProxyConfigurationProps) {
     this.bluetoothManager = configuration.bluetoothManager;
     this.meshConfigurationManager = configuration.meshConfigurationManager;
+    this.PDUBuilder = PDUBuilder.getInstance();
   }
 
   public setBlacklistFilter() {
-    const seq = this.meshConfigurationManager.getSeq();
-    const src = this.meshConfigurationManager.getProvisionerUnicastAddress();
-    const ivIndex = this.meshConfigurationManager.getIvIndex();
-
     const payload = OpCode.SET_FILTER_TYPE + FilterType.BLACK_LIST;
 
-    const securedNetworkPDUInputParams: MakeSecureNetworkLayerParams = {
-      encryptionKey: this.meshConfigurationManager.getEncryptionKey(),
-      dst: ProxyConfigurationClient.dst,
-      lowerTransportPDU: payload,
-      seq: seq,
-      src: src,
-      ivIndex: ivIndex,
-      nonceType: ProxyConfigurationClient.nonceType,
-    };
-    const securedNetworkPDU = pduBuilder.makeSecureNetworkLayer(securedNetworkPDUInputParams);
-
-    const obfuscateNetworkPDUInputParams: ObfuscateNetworkPDUInput = {
-      encryptedNetworkPayload: securedNetworkPDU,
+    const proxyPDU = this.PDUBuilder.makeProxyConfigurationMessage({
+      accessPayload: payload,
       ctl: ProxyConfigurationClient.ctl,
-      ttl: ProxyConfigurationClient.ttl,
-      seq: seq,
-      src: src,
-      ivIndex: ivIndex,
-      privacyKey: this.meshConfigurationManager.getPrivacyKey(),
-    };
-    const obfuscated = pduBuilder.obfuscateNetworkPDU(obfuscateNetworkPDUInputParams);
-
-    const finalizedNetworkPDUInputParams: FinalizeNetworkPDUInput = {
+      dst: ProxyConfigurationClient.dst,
+      encryptionKey: this.meshConfigurationManager.getEncryptionKey(),
       ivi: this.meshConfigurationManager.getIvi(),
-      nid: this.meshConfigurationManager.getNID(),
-      obfuscated_ctl_ttl_seq_src: obfuscated.obfuscated_ctl_ttl_seq_src,
-      encDst: securedNetworkPDU.EncDST,
-      encTransportPdu: securedNetworkPDU.EncTransportPDU,
-      netmic: securedNetworkPDU.NetMIC,
-    };
-    const finalizedNetworkPDU = pduBuilder.finalizeNetworkPDU(finalizedNetworkPDUInputParams);
-
-    const proxyPDU = pduBuilder.finalizeProxyPDU(
-      finalizedNetworkPDU,
-      MessageType.PROXY_CONFIGURATION
-    );
+      ivIndex: this.meshConfigurationManager.getIvIndex(),
+      NID: this.meshConfigurationManager.getNID(),
+      privacyKey: this.meshConfigurationManager.getPrivacyKey(),
+      seq: this.meshConfigurationManager.getSeq(),
+      src: this.meshConfigurationManager.getProvisionerUnicastAddress(),
+      ttl: ProxyConfigurationClient.ttl,
+      nonceType: ProxyConfigurationClient.nonceType,
+      messageType: MessageType.PROXY_CONFIGURATION,
+    });
 
     this.bluetoothManager.sendProxyPDU(proxyPDU);
   }

@@ -150,12 +150,7 @@ const swapHexEndianness = (hex: string) => {
   return swapped;
 };
 
-const splitHexStringChunksOfSizeX = (hex: string, x: number) => {
-  if (hex.length % 2 != 0) {
-    console.log("error: hex string need to be even in length");
-    return;
-  }
-
+const splitHexStringInChunksOfSizeX = (hex: string, x: number) => {
   const numChunks = Math.ceil(hex.length / x);
   const chunks = new Array(numChunks);
 
@@ -181,7 +176,7 @@ const utils = {
   arrayBufferToHex,
   hexToArrayBuffer,
   swapHexEndianness,
-  splitHexStringChunksOfSizeX,
+  splitHexStringChunksOfSizeX: splitHexStringInChunksOfSizeX,
 };
 
 export default utils;
