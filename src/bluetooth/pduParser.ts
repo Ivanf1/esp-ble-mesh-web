@@ -32,6 +32,7 @@ interface ParsedNetworkPDU {
   src: string;
   dst: string;
   ivIndex: string;
+  ctl: number;
   lowerTransportPDU: string;
 }
 export interface ParsedLowerTransportPDU {
@@ -102,6 +103,18 @@ class PDUParser {
         const parsedNetworkPDU = this.parseNetworkPDU(pdu);
         if (!parsedNetworkPDU) return;
 
+        /**
+         * If the received message is a Control Message, it can either be a normal Control Message
+         * or a Segmented Acknowledgment Message. If it is the latter, we do not need to proceed
+         * further in the decryption.
+         */
+        if (parsedNetworkPDU.ctl) {
+          const res = this.parseControlMessage(parsedNetworkPDU.lowerTransportPDU);
+          if (!res) return;
+
+          parsedNetworkPDU.lowerTransportPDU = res;
+        }
+
         const lowerTransportPDU = this.parseLowerTransportPDU(parsedNetworkPDU);
         if (!lowerTransportPDU) return;
 
@@ -127,7 +140,7 @@ class PDUParser {
             segments![0].seq,
             parsedNetworkPDU.src,
             parsedNetworkPDU.dst,
-            lowerTransportPDU.akf ? "application" : "device"
+            lowerTransportPDU.akf
           );
 
           this.segmentsMap.deleteSegments(key);
@@ -139,7 +152,8 @@ class PDUParser {
             lowerTransportPDU,
             parsedNetworkPDU.dst,
             parsedNetworkPDU.src,
-            parsedNetworkPDU.seq
+            parsedNetworkPDU.seq,
+            lowerTransportPDU.akf
           );
           if (!upperTransportAccessPDU) return;
 
@@ -252,15 +266,6 @@ class PDUParser {
     // TTL is contained within the last 7 bits.
     const ttlInt = parseInt(ctl_ttl_pdu, 16) & 0x7f;
 
-    // Refer to Mesh Profile Specification 3.5.2 Table 3.9.
-    if (ctlInt != 0) {
-      console.error(
-        `Invalid value for CTL. Value is ${ctlInt} but only 0 (Unsegmented/Segmented Access \
-      Message) is currently supported.`
-      );
-      return;
-    }
-
     // SEQ is contained within 3 octets.
     // Refer to Mesh Profile Specification 3.8.5.1 Table 3.46.
     const seqPdu = deobfuscatedNetworkPdu.ctl_ttl_seq_src.substring(2, 8);
@@ -305,8 +310,42 @@ class PDUParser {
       src: srcPdu,
       seq: seqPdu,
       ivIndex: ivIndexPdu,
+      ctl: ctlInt,
       lowerTransportPDU: lowerTransportPdu,
     } as ParsedNetworkPDU;
+  }
+
+  private parseControlMessage(lowerTransportPDU: string) {
+    const seg_opcode = lowerTransportPDU.substring(0, 2);
+    const seg_opcodeInt = parseInt(seg_opcode, 16);
+
+    const segInt = (seg_opcodeInt & 0x80) >> 7;
+
+    // Refer to Mesh Profile Specification 3.5.2.3.1.
+    if (seg_opcode == "00") {
+      console.log(`${TAG} segment acknowledgment message`);
+
+      const obo_seqzero_rfu = lowerTransportPDU.substring(2, 6);
+      const obo_seqzero_rfuInt = parseInt(obo_seqzero_rfu, 16);
+
+      const obo = (obo_seqzero_rfuInt & 0x8000) >> 15;
+      if (obo == 0) {
+        console.log(`${TAG} node directly addressed by received message `);
+      } else {
+        console.log(`${TAG} friend node acknowledging message on behalf of a low power node`);
+      }
+
+      const seqzero = (obo_seqzero_rfuInt & 0x7ffc) >> 2;
+      return;
+    }
+
+    if (segInt == 0) {
+      console.log(`${TAG} unsegmented control message`);
+      return lowerTransportPDU.substring(2);
+    } else {
+      console.log(`${TAG} segmented control message. Not yet supported`);
+      return;
+    }
   }
 
   /**
@@ -383,7 +422,8 @@ class PDUParser {
     { upperTransportAccessPDU }: ParsedLowerTransportPDU,
     dst: string,
     src: string,
-    seq: string
+    seq: string,
+    akf: number
   ) {
     // The Encrypted Access Payload has a variable length, but we know that for
     // unsegmented messages, the size of the TransMIC is 32 bits (4 octets) for data messages.
@@ -398,15 +438,39 @@ class PDUParser {
       upperTransportAccessPDU.length
     );
 
-    // Refer to Mesh Profile Specification 3.8.5.2.
-    const appNonce = "0100" + seq + src + dst + this.meshManager.getIvIndex();
+    let nonce = "";
+    let key: string | undefined = "";
+    if (akf) {
+      nonce = this.PDUBuilder.makeApplicationNonce(
+        parseInt(seq, 16),
+        src,
+        dst,
+        this.meshManager.getIvIndex()
+      );
+      key = this.meshManager.getAppKey();
+    } else {
+      nonce = this.PDUBuilder.makeDeviceNonce(
+        parseInt(seq, 16),
+        src,
+        dst,
+        this.meshManager.getIvIndex(),
+        false
+      );
+      key = this.meshManager.getNodeDevKey(src);
+    }
+
+    if (!key) {
+      console.log(`Cannot decrypt access payload: src DevKey is not available`);
+      return;
+    }
 
     // For Unsegmented Access Messages the size of TransMIC is 32 bits.
     // Refer to Mesh Profile Specification 3.6.2.2.
     const decryptedAccessPayload = crypto.decryptAndVerify(
-      this.meshManager.getAppKey(),
+      // this.meshManager.getAppKey(),
+      key!,
       accessPayload + transMic,
-      appNonce,
+      nonce,
       0
     );
     if (!decryptedAccessPayload) {
@@ -423,10 +487,10 @@ class PDUParser {
     seq: string,
     src: string,
     dst: string,
-    keyType: "application" | "device"
+    akf: number
   ) {
     let nonce = "";
-    if (keyType == "application") {
+    if (akf) {
       nonce = this.PDUBuilder.makeApplicationNonce(
         parseInt(seq, 16),
         src,

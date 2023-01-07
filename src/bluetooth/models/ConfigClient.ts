@@ -8,11 +8,15 @@ const TAG = "CONFIG CLIENT";
 
 enum OpCode {
   APPKEY_ADD = "00",
+  APPKEY_STATUS = "8003",
   COMPOSITION_DATA_GET = "8008",
   COMPOSITION_DATA_STATUS = "02",
   MODEL_APP_BIND = "803d",
+  MODEL_APP_STATUS = "803e",
   MODEL_PUBLICATION_SET = "03",
+  MODEL_PUBLICATION_STATUS = "8019",
   MODEL_SUBSCRIPTION_ADD = "801b",
+  MODEL_SUBSCRIPTION_STATUS = "801f",
 }
 
 interface ConfigClientProps {
@@ -229,10 +233,48 @@ class ConfigClient {
   }
 
   private parseConfigMessage(pdu: AccessPayloadData, src: string) {
+    let status = "";
+
     switch (pdu.opcode as OpCode) {
       case OpCode.COMPOSITION_DATA_STATUS:
         const nodeComposition = this.parseCompositionData(pdu.params);
         this.meshConfigurationManager.addNodeComposition(src, nodeComposition);
+        break;
+
+      case OpCode.APPKEY_STATUS:
+        status = pdu.params.substring(0, 2);
+        if (status == "00") {
+          console.log(`appkey add successful`);
+        } else {
+          console.log(`appkey add error`);
+        }
+        break;
+
+      case OpCode.MODEL_APP_STATUS:
+        status = pdu.params.substring(0, 2);
+        if (status == "00") {
+          console.log(`appkey bind successful`);
+        } else {
+          console.log(`appkey bind error`);
+        }
+        break;
+
+      case OpCode.MODEL_PUBLICATION_STATUS:
+        status = pdu.params.substring(0, 2);
+        if (status == "00") {
+          console.log(`publication set successful`);
+        } else {
+          console.log(`publication set error`);
+        }
+        break;
+
+      case OpCode.MODEL_SUBSCRIPTION_STATUS:
+        status = pdu.params.substring(0, 2);
+        if (status == "00") {
+          console.log(`subscription add successful`);
+        } else {
+          console.log(`subscription add error`);
+        }
         break;
 
       default:
