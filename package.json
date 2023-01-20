@@ -15,7 +15,8 @@
     "asmcrypto.js": "^2.3.2",
     "big-integer": "^1.6.51",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "vite-plugin-svgr": "^2.4.0"
   },
   "devDependencies": {
     "@types/node": "^18.11.11",
