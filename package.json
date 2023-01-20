@@ -14,6 +14,7 @@
     "aes-cmac": "^2.0.0",
     "asmcrypto.js": "^2.3.2",
     "big-integer": "^1.6.51",
+    "framer-motion": "^8.5.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "vite-plugin-svgr": "^2.4.0"

@@ -68,6 +68,16 @@
   button.primary {
     @apply bg-primary;
     @apply text-white;
+    @apply hover:bg-opacity-95;
+    transition: 0.2s;
+  }
+
+  button.cancel {
+    @apply bg-transparent;
+    @apply text-cancel;
+    @apply border-solid border-cancel border-2;
+    @apply hover:bg-cancel hover:text-white;
+    transition: 0.2s;
   }
 }
 

@@ -1,9 +1,18 @@
+import { useState } from "react";
 import { ReactComponent as ConnectSVG } from "../../assets/img/connect_ill.svg";
+import ProgressBar from "../../components/ProgressBar";
 
 const Provisioning = () => {
+  const [isProvisioning, setIsProvisioning] = useState<boolean>(false);
   const onConnectionClick = () => {};
 
-  const onProvisionClick = () => {};
+  const onProvisionClick = () => {
+    setIsProvisioning(true);
+  };
+
+  const onAbortClick = () => {
+    setIsProvisioning(false);
+  };
 
   return (
     <>
@@ -30,10 +39,20 @@ const Provisioning = () => {
               <span>kgskihjgihjworitg</span>
             </div>
           </div>
-          <div className="p-2 rounded-b-lg border-solid border-x-2 border-b-2 border-border flex justify-end">
-            <button className="primary" onClick={onProvisionClick}>
-              Provision
-            </button>
+          <div className="p-5 rounded-b-lg border-solid border-x-2 border-b-2 border-border flex flex-col">
+            {isProvisioning ? (
+              <>
+                <span>Device is being provisioned...</span>
+                <ProgressBar completed={44} total={100} showLabel={true} />
+                <button className="cancel ml-auto mt-5" onClick={onAbortClick}>
+                  Abort
+                </button>
+              </>
+            ) : (
+              <button className="primary ml-auto" onClick={onProvisionClick}>
+                Provision
+              </button>
+            )}
           </div>
         </div>
       </div>

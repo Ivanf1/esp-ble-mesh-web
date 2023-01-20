@@ -8,6 +8,7 @@ module.exports = {
         secondary: "#314670",
         "primary-text": "#081B4B",
         border: "#E0E0E7",
+        cancel: "#C62137",
       },
     },
   },
