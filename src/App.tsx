@@ -7,8 +7,8 @@ import Provisioner, { ProvisioningResult } from "./bluetooth/models/Provisioner"
 import ProxyConfigurationClient from "./bluetooth/models/ProxyConfigurationClient";
 // import { ParsedProxyPDU } from "./bluetooth/PduParser";
 import { CONFIGURATION_API } from "./constants/bluetooth";
-import Provisioning from "./pages/provisioning/Provisioning";
 import Sidemenu from "./components/Sidemenu";
+import { Outlet } from "react-router-dom";
 
 const meshConfigurationManager = new MeshConfigurationManager({
   meshConfigurationServerUrl: CONFIGURATION_API,
@@ -154,16 +154,16 @@ function App() {
   // );
 
   return (
-    <div>
+    <>
       <Sidemenu />
       <div className="ml-[260px] min-h-screen flex">
         <main className="min-w-full px-5 2xl:px-0">
           <div className="min-h-full max-w-7xl mx-auto pt-16">
-            <Provisioning />
+            <Outlet />
           </div>
         </main>
       </div>
-    </div>
+    </>
   );
 }
 

@@ -26,7 +26,7 @@ const Provisioning = () => {
           </button>
         </div>
       </div> */}
-      <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-[2fr_1fr]">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-10">
         <div>
           <h5 className="mb-3">Connected Device</h5>
           <div className="p-5 rounded-t-lg border-solid border-2 border-border">
