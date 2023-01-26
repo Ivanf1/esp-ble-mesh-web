@@ -23,31 +23,47 @@
     font-family: Poppins, system-ui, sans-serif;
   }
 
+  .link {
+    @apply underline;
+    @apply cursor-pointer;
+    @apply text-blue-900;
+  }
+
+  label {
+    @apply font-medium;
+  }
+
+  select,
+  [type="text"] {
+    @apply focus:ring-primary focus:border-primary;
+  }
+
   h1 {
     font-size: 3.052rem;
-    @apply text-primary-text;
+    /* @apply text-primary-text; */
   }
 
   h2 {
     font-size: 2.441rem;
     font-weight: 500;
-    @apply text-primary-text;
+    /* @apply text-primary-text; */
   }
 
   h3 {
     font-size: 1.953rem;
-    font-weight: 400;
-    @apply text-primary-text;
+    font-weight: 500;
+    /* @apply text-primary-text; */
   }
 
   h4 {
     font-size: 1.563rem;
-    @apply text-primary-text;
+    /* @apply text-primary-text; */
   }
 
   h5 {
     font-size: 1.25rem;
-    @apply text-primary-text;
+    font-weight: 500;
+    /* @apply text-primary-text; */
   }
 
   button {
@@ -72,6 +88,14 @@
     transition: 0.2s;
   }
 
+  button.secondary {
+    @apply bg-transparent;
+    @apply text-primary;
+    @apply border-solid border-primary border-2;
+    @apply hover:bg-primary hover:text-white;
+    transition: 0.2s;
+  }
+
   button.cancel {
     @apply bg-transparent;
     @apply text-cancel;
@@ -79,6 +103,71 @@
     @apply hover:bg-cancel hover:text-white;
     transition: 0.2s;
   }
+
+  div.elements-table > div:last-child {
+    @apply border-none;
+  }
+  div.elements-table > div {
+    @apply grid;
+    @apply grid-cols-[1fr_1fr_2fr_15%];
+    @apply p-2;
+    @apply border-b-2;
+    @apply border-solid;
+    @apply border-border;
+  }
+  div.models-table > div:last-child {
+    @apply border-none;
+  }
+  div.models-table > div {
+    @apply grid;
+    @apply grid-cols-[1fr_1fr_15%];
+    @apply p-2;
+    @apply border-b-2;
+    @apply border-solid;
+    @apply border-border;
+  }
+}
+
+.ReactTags__tags {
+  padding: 0.5rem;
+}
+.ReactTags__selected {
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+}
+.ReactTags__tag {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  background: #f8f8f9;
+  padding: 0.25rem 0.5rem 0.25rem 0.5rem;
+  border-radius: 8px;
+}
+.ReactTags__tag > button {
+  padding-left: 0.5rem;
+  padding-right: 0.25rem;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+input.ReactTags__tagInputField {
+  border: 2px solid rgb(224 224 231 / var(--tw-border-opacity));
+  border-radius: 8px;
+  width: 100%;
+}
+.ReactTags__tagInput {
+  margin-top: 1em;
+}
+.ReactTags__suggestions {
+  padding: 0.5rem;
+  margin-top: 0.25rem;
+}
+.ReactTags__suggestions > ul {
+  margin-top: 0.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  cursor: pointer;
 }
 
 body {

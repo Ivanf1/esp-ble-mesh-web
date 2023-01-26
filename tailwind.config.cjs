@@ -9,8 +9,9 @@ module.exports = {
         "primary-text": "#081B4B",
         border: "#E0E0E7",
         cancel: "#C62137",
+        "bg-light": "#f8f8f9",
       },
     },
   },
-  plugins: [],
+  plugins: [require("@tailwindcss/forms")],
 };
