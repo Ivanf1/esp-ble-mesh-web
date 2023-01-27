@@ -8,6 +8,7 @@ import Provisioning from "./pages/provisioning/Provisioning";
 import ErrorPage from "./pages/error/ErrorPage";
 import ElementSettings from "./pages/device/subpages/ElementSettings";
 import ModelSettings from "./pages/device/subpages/ModelSettings";
+import Mesh from "./pages/mesh/Mesh";
 
 const router = createBrowserRouter([
   {
@@ -30,6 +31,10 @@ const router = createBrowserRouter([
       {
         path: "provisioning",
         element: <Provisioning />,
+      },
+      {
+        path: "mesh",
+        element: <Mesh />,
       },
     ],
   },
