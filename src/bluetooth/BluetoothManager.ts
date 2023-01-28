@@ -10,7 +10,9 @@ import utils from "../utils/utils";
 import { MessageType } from "./PduBuilder";
 import MeshConfigurationManager from "./MeshConfigurationManager";
 import PDUParser, { ProxyPDU } from "./PduParser";
+import MessageQueue from "./MessageQueue";
 
+const SCHEDULED_SEND_INTERVAL_MS = 80;
 const TAG = "BLUETOOTH MANAGER";
 
 type ProxyPDUNotificationCallback = (parsedProxyPDU: ProxyPDU) => void;
@@ -27,6 +29,7 @@ interface BluetoothManagerProps {
 class BluetoothManager {
   private meshConfigurationManager: MeshConfigurationManager;
   private pduParser: PDUParser;
+  private messageQueue: MessageQueue;
 
   private device: BluetoothDevice | null = null;
   private dataIn: BluetoothRemoteGATTCharacteristic | null = null;
@@ -41,6 +44,7 @@ class BluetoothManager {
   constructor(configuration: BluetoothManagerProps) {
     this.meshConfigurationManager = configuration.meshConfigurationManager;
     this.pduParser = PDUParser.getInstance(configuration.meshConfigurationManager);
+    this.messageQueue = MessageQueue.getInstance();
 
     this.proxyPDUNotificationCallbacks = new Map();
     this.serviceAndCharacteristicsForConnectionType = new Map();
@@ -54,6 +58,7 @@ class BluetoothManager {
       dataIn: MESH_PROXY_DATA_IN,
       dataOut: MESH_PROXY_DATA_OUT,
     });
+    this.scheduledSend();
   }
 
   public async connect(connectionType: ConnectionType) {
@@ -119,16 +124,7 @@ class BluetoothManager {
   }
 
   public sendProxyPDU(proxyPDU: string) {
-    if (!this.dataIn) return;
-    const proxyPDUBytes = utils.hexToBytes(proxyPDU);
-    const proxyPDUData = new Uint8Array(proxyPDUBytes);
-    try {
-      this.dataIn.writeValue(proxyPDUData.buffer);
-      this.meshConfigurationManager.updateSeq();
-      console.log(`${TAG}: sent proxy pdu OK`);
-    } catch (error) {
-      console.log(`${TAG}: sending proxy pdu error: ` + error);
-    }
+    this.messageQueue.enqueue(proxyPDU);
   }
 
   public registerProxyPDUNotificationCallback = (
@@ -146,6 +142,27 @@ class BluetoothManager {
   public registerDisconnectedCallback(callback: (e: Event) => void) {
     if (!this.device) return;
     this.device.addEventListener("gattserverdisconnected", callback);
+  }
+
+  private scheduledSend() {
+    const message = this.messageQueue.dequeue();
+    if (message) {
+      this.doSendProxyPDU(message);
+    }
+    setTimeout(() => this.scheduledSend(), SCHEDULED_SEND_INTERVAL_MS);
+  }
+
+  private doSendProxyPDU(proxyPDU: string) {
+    if (!this.dataIn) return;
+    const proxyPDUBytes = utils.hexToBytes(proxyPDU);
+    const proxyPDUData = new Uint8Array(proxyPDUBytes);
+    try {
+      this.dataIn.writeValue(proxyPDUData.buffer);
+      this.meshConfigurationManager.updateSeq();
+      console.log(`${TAG}: sent proxy pdu OK`);
+    } catch (error) {
+      console.log(`${TAG}: sending proxy pdu error: ` + error);
+    }
   }
 
   private proxyPDUNotificationDispatcher(e: Event) {

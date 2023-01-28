@@ -88,7 +88,7 @@ class ConfigClient {
     });
 
     for (let i = 0; i < proxyPDUs.length; i++) {
-      this.waitAndSendMessage(proxyPDUs[i], 500 * i, `add app key segment ${i}`);
+      this.bluetoothManager.sendProxyPDU(proxyPDUs[i]);
     }
   }
 
@@ -378,13 +378,6 @@ class ConfigClient {
     } while (elements.length > 0);
 
     return nodeComposition;
-  }
-
-  private waitAndSendMessage(message: string, waitTime: number, log: string) {
-    setTimeout(() => {
-      console.log(`${log}: ${message}`);
-      this.bluetoothManager.sendProxyPDU(message);
-    }, waitTime);
   }
 }
 

@@ -107,13 +107,6 @@ class Provisioner {
     this.PDUBuilder = PDUBuilder.getInstance();
   }
 
-  private waitAndSendMessage(message: string, waitTime: number, log: string) {
-    setTimeout(() => {
-      console.log(`${log}: ${message}`);
-      this.bluetoothManager.sendProxyPDU(message);
-    }, waitTime);
-  }
-
   /**
    * Provisioning process steps:
    *
@@ -302,12 +295,7 @@ class Provisioner {
         const sm = this.makeStartMessage();
         console.log(`${TAG}: sending start message: `);
         this.bluetoothManager.sendProxyPDU(sm);
-        // Wait for the previous message to be sent before sending another message.
-        this.waitAndSendMessage(
-          await this.makePublicKeyMessage(),
-          500,
-          `${TAG}: sending public key message`
-        );
+        this.bluetoothManager.sendProxyPDU(await this.makePublicKeyMessage());
         if (this.onProvisioningStatusUpdateCallback) {
           this.onProvisioningStatusUpdateCallback({
             error: false,
