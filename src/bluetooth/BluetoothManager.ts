@@ -114,6 +114,10 @@ class BluetoothManager {
     this.dataOut = null;
   }
 
+  public getDevice() {
+    return this.device;
+  }
+
   public sendProxyPDU(proxyPDU: string) {
     if (!this.dataIn) return;
     const proxyPDUBytes = utils.hexToBytes(proxyPDU);

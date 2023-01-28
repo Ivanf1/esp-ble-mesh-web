@@ -1,25 +1,12 @@
+import { ElementModel, ProvisionedNode } from "../../../bluetooth/meshConfiguration.interface";
+import MeshConfigurationManager from "../../../bluetooth/MeshConfigurationManager";
+
 interface Props {
+  device: ProvisionedNode;
+  MeshConfigurationManager: MeshConfigurationManager;
   onElementSelected: (elementNumber: number) => void;
 }
-const DeviceSettings = ({ onElementSelected }: Props) => {
-  const elements = [
-    {
-      name: "hi",
-      unicastAddress: "0x000C",
-      models: ["Configuration Server", "Generic OnOff Server"],
-    },
-    {
-      name: "hiiiii",
-      unicastAddress: "0x000E",
-      models: ["Configuration Server"],
-    },
-    {
-      name: "heei",
-      unicastAddress: "0x000F",
-      models: ["Configuration Server", "Generic OnOff Server"],
-    },
-  ];
-
+const DeviceSettings = ({ onElementSelected, device, MeshConfigurationManager }: Props) => {
   return (
     <>
       <h5>Device Settings</h5>
@@ -31,8 +18,7 @@ const DeviceSettings = ({ onElementSelected }: Props) => {
             defaultValue={0}
             className="border-solid border-2 p-2 border-border rounded-lg block"
           >
-            <option>Not assigned</option>
-            <option value="abcdefghi">abcdefghi</option>
+            <option value="netkey">{MeshConfigurationManager.getNetKey()}</option>
           </select>
         </div>
 
@@ -44,11 +30,11 @@ const DeviceSettings = ({ onElementSelected }: Props) => {
               <span>Unicast Address</span>
               <span>Models</span>
             </div>
-            {elements.map((e, i) => {
+            {device.elements.map((e, i) => {
               return (
                 <ElementsTableElement
-                  elementName={e.name}
-                  unicastAddress={e.unicastAddress}
+                  elementName={e.name ?? "Not assigned"}
+                  unicastAddress={e.address}
                   models={e.models}
                   onConfigureElementClick={onElementSelected}
                   elementIdx={i}
@@ -68,7 +54,7 @@ const DeviceSettings = ({ onElementSelected }: Props) => {
 interface ElementsTableElementProps {
   elementName: string;
   elementIdx: number;
-  models: string[];
+  models: ElementModel[];
   unicastAddress: string;
   onConfigureElementClick: (elementNumber: number) => void;
 }
@@ -85,7 +71,7 @@ const ElementsTableElement = ({
       <span>{unicastAddress}</span>
       <div className="flex flex-col gap-2">
         {models.map((m, i) => (
-          <span key={i}>{m}</span>
+          <span key={i}>{m.modelID}</span>
         ))}
       </div>
       <button className="secondary self-start" onClick={() => onConfigureElementClick(elementIdx)}>

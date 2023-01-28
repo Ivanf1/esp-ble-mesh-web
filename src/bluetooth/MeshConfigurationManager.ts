@@ -2,6 +2,7 @@ import { SEQ_KEY, MESH_CONFIGURATION_KEY } from "../constants/storageKeys";
 import { MeshNetworkConfiguration, ProvisionedNodeElement } from "./meshConfiguration.interface";
 import utils from "../utils/utils";
 import crypto from "./crypto";
+import nodeTest from "node:test";
 
 export interface NodeComposition {
   cid: string;
@@ -112,6 +113,9 @@ class MeshConfigurationManager {
   public getSeq() {
     return this.seq;
   }
+  public getNodeById(id: string) {
+    return this.meshConfiguration?.nodes.find((n) => n.id === id);
+  }
   public getNodeByUnicastAddress(nodeUnicastAddress: string) {
     return this.meshConfiguration?.nodes.find((n) => n.unicastAddress === nodeUnicastAddress);
   }
@@ -137,13 +141,30 @@ class MeshConfigurationManager {
     this.seq++;
     this.updateSequenceNumberInLocalStorage();
   }
+  public updateElementName(nodeId: string, elementIndex: number, elementName: string) {
+    const node = this.getNodeById(nodeId);
+    if (!node) return;
+    const element = node.elements[elementIndex];
+    if (!element) return;
+    element.name = elementName;
+    this.storeMeshConfiguration();
+  }
 
-  public addNode(unicastAddress: string, devKey: string, elementsNum: number) {
+  public addNode(
+    unicastAddress: string,
+    devKey: string,
+    elementsNum: number,
+    id: string,
+    name: string
+  ) {
     const elements = Array.from({ length: elementsNum }, (_, i) => {
+      const address = utils.toHex(parseInt(unicastAddress, 16) + i, 2);
       return {
         index: i,
         location: "",
         models: [],
+        name: `Element ${i}`,
+        address: address,
       } as ProvisionedNodeElement;
     });
 
@@ -156,12 +177,13 @@ class MeshConfigurationManager {
       elements: elements,
       excluded: false,
       features: { friend: 2, lowPower: 2, proxy: 2, relay: 2 },
-      name: "",
+      name: name,
       netKeys: [{ index: 0, updated: false }],
       security: "secure",
       unicastAddress: unicastAddress,
       UUID: crypto.generateUUID(),
       defaultTTL: 5,
+      id: id,
     });
 
     this.storeMeshConfiguration();
@@ -172,9 +194,13 @@ class MeshConfigurationManager {
       (n) => n.unicastAddress === nodeUnicastAddress
     );
     if (!idx || idx < 0) return;
+    const node = this.meshConfiguration!.nodes[idx];
 
     const elements = nodeComposition.elements.map((e, i) => {
+      const element = node.elements[i];
+
       return {
+        ...element,
         index: i,
         location: e.location,
         models: [
@@ -193,7 +219,7 @@ class MeshConfigurationManager {
             };
           }),
         ],
-      };
+      } as ProvisionedNodeElement;
     });
 
     this.meshConfiguration!.nodes[idx] = {
@@ -210,6 +236,8 @@ class MeshConfigurationManager {
       },
       elements: elements,
     };
+
+    this.storeMeshConfiguration();
   }
 
   private newMeshConfiguration() {
@@ -266,6 +294,8 @@ class MeshConfigurationManager {
                   subscribe: [],
                 },
               ],
+              name: "Primary Element",
+              address: "0001",
             },
           ],
           excluded: false,
@@ -276,6 +306,7 @@ class MeshConfigurationManager {
           unicastAddress: "0001",
           UUID: thisNodeUUID,
           defaultTTL: 5,
+          id: "",
         },
       ],
       partial: false,

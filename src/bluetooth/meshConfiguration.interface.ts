@@ -60,6 +60,7 @@ export interface ProvisionedNode {
   UUID: string;
   pid?: string;
   vid?: string;
+  id: string;
 }
 
 export interface Key {
@@ -71,7 +72,8 @@ export interface ProvisionedNodeElement {
   index: number;
   location: string;
   models: ElementModel[];
-  name?: string;
+  name: string;
+  address: string;
 }
 
 export interface ElementModel {

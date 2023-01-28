@@ -44,12 +44,15 @@ interface NodeToProvision {
   random: string;
   devKey: string;
   unicastAddress: string;
+  id: string;
+  name: string;
 }
-export interface ProvisioningResult {
+export interface ProvisioningStatus {
   error: boolean;
   message?: string; // only set if [error] is true
+  percentage?: number; // only set if [error] is true
 }
-type ProvisioningResultCallback = (result: ProvisioningResult) => void;
+type ProvisioningStatusUpdateCallback = (status: ProvisioningStatus) => void;
 
 interface ProvisionerProps {
   bluetoothManager: BluetoothManager;
@@ -72,6 +75,8 @@ class Provisioner {
     random: "",
     devKey: "",
     unicastAddress: "",
+    id: "",
+    name: "",
   };
   private confirmationMessageFields = {
     provisioningInvitePDUValue: "",
@@ -85,7 +90,7 @@ class Provisioner {
   private randomProvisioner = "";
 
   private isProvisioning = false;
-  private onProvisioningResultCallback: ProvisioningResultCallback | null;
+  private onProvisioningStatusUpdateCallback: ProvisioningStatusUpdateCallback | null;
   private bluetoothManager: BluetoothManager;
   private meshConfigurationManager: MeshConfigurationManager;
 
@@ -97,7 +102,7 @@ class Provisioner {
       (pdu) => this.onProxyPDUReceived(pdu),
       MessageType.PROVISIONING
     );
-    this.onProvisioningResultCallback = null;
+    this.onProvisioningStatusUpdateCallback = null;
     this.meshConfigurationManager = props.meshConfigurationManager;
     this.PDUBuilder = PDUBuilder.getInstance();
   }
@@ -133,13 +138,16 @@ class Provisioner {
    * 10) Provisioning Complete. The new device now indicates that it has successfully received and
    *     processed the provisioning data.
    */
-  public startProvisioningProcess(onProvisioningResult?: ProvisioningResultCallback) {
+  public startProvisioningProcess(onProvisioningStatusUpdate?: ProvisioningStatusUpdateCallback) {
     if (this.isProvisioning) return;
-    if (onProvisioningResult) {
-      this.onProvisioningResultCallback = onProvisioningResult;
+    if (onProvisioningStatusUpdate) {
+      this.onProvisioningStatusUpdateCallback = onProvisioningStatusUpdate;
     }
     this.isProvisioning = true;
     this.publicKeyHex = "";
+    const device = this.bluetoothManager.getDevice()!;
+    this.nodeToProvision.id = device.id;
+    this.nodeToProvision.name = device.name ?? "";
 
     const inviteMessage = this.makeInviteMessage();
     console.log(`${TAG}: sending invite message`);
@@ -300,6 +308,12 @@ class Provisioner {
           500,
           `${TAG}: sending public key message`
         );
+        if (this.onProvisioningStatusUpdateCallback) {
+          this.onProvisioningStatusUpdateCallback({
+            error: false,
+            percentage: 20,
+          });
+        }
         break;
 
       case ProvisioningType.PUBLIC_KEY:
@@ -309,6 +323,12 @@ class Provisioner {
         const cm = this.makeConfirmationMessage();
         console.log(`${TAG}: sending confirmation message: ${cm}`);
         this.bluetoothManager.sendProxyPDU(this.makeConfirmationMessage());
+        if (this.onProvisioningStatusUpdateCallback) {
+          this.onProvisioningStatusUpdateCallback({
+            error: false,
+            percentage: 40,
+          });
+        }
         break;
 
       case ProvisioningType.CONFIRMATION:
@@ -316,6 +336,12 @@ class Provisioner {
         const pm = this.makeProvisioningRandom();
         console.log(`${TAG}: sending provisioning random: ${pm}`);
         this.bluetoothManager.sendProxyPDU(pm);
+        if (this.onProvisioningStatusUpdateCallback) {
+          this.onProvisioningStatusUpdateCallback({
+            error: false,
+            percentage: 60,
+          });
+        }
         break;
 
       case ProvisioningType.RANDOM:
@@ -325,6 +351,12 @@ class Provisioner {
         const pdm = this.makeProvisioningData();
         console.log(`${TAG}: sending provisioning data: ${pdm}`);
         this.bluetoothManager.sendProxyPDU(pdm);
+        if (this.onProvisioningStatusUpdateCallback) {
+          this.onProvisioningStatusUpdateCallback({
+            error: false,
+            percentage: 80,
+          });
+        }
         break;
 
       case ProvisioningType.COMPLETE:
@@ -332,11 +364,14 @@ class Provisioner {
         this.meshConfigurationManager.addNode(
           this.nodeToProvision.unicastAddress,
           this.nodeToProvision.devKey,
-          parseInt(this.nodeToProvision.numberOfElements, 16)
+          parseInt(this.nodeToProvision.numberOfElements, 16),
+          this.nodeToProvision.id,
+          this.nodeToProvision.name
         );
-        if (this.onProvisioningResultCallback) {
-          this.onProvisioningResultCallback({
+        if (this.onProvisioningStatusUpdateCallback) {
+          this.onProvisioningStatusUpdateCallback({
             error: false,
+            percentage: 100,
           });
         }
         this.resetProvisioningInfo();
@@ -429,8 +464,8 @@ class Provisioner {
         break;
     }
 
-    if (this.onProvisioningResultCallback) {
-      this.onProvisioningResultCallback({
+    if (this.onProvisioningStatusUpdateCallback) {
+      this.onProvisioningStatusUpdateCallback({
         error: true,
         message: message,
       });
@@ -454,6 +489,8 @@ class Provisioner {
       random: "",
       devKey: "",
       unicastAddress: "",
+      id: "",
+      name: "",
     };
     this.confirmationMessageFields = {
       provisioningInvitePDUValue: "",

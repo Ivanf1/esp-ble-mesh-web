@@ -19,6 +19,11 @@ enum OpCode {
   MODEL_SUBSCRIPTION_STATUS = "801f",
 }
 
+export interface ConfigClientStatusUpdate {
+  type: string;
+  error?: boolean;
+}
+type StatusUpdateCallback = (status: ConfigClientStatusUpdate) => void;
 interface ConfigClientProps {
   bluetoothManager: BluetoothManager;
   meshConfigurationManager: MeshConfigurationManager;
@@ -28,6 +33,8 @@ class ConfigClient {
   private meshConfigurationManager: MeshConfigurationManager;
   private PDUBuilder: PDUBuilder;
 
+  private statusUpdatesCallbacks: Map<string, StatusUpdateCallback>;
+
   constructor(props: ConfigClientProps) {
     this.bluetoothManager = props.bluetoothManager;
     this.meshConfigurationManager = props.meshConfigurationManager;
@@ -36,6 +43,17 @@ class ConfigClient {
       MessageType.NETWORK_PDU
     );
     this.PDUBuilder = PDUBuilder.getInstance();
+    this.statusUpdatesCallbacks = new Map();
+  }
+
+  public registerStatusUpdateCallback(id: string, callback: StatusUpdateCallback) {
+    this.statusUpdatesCallbacks.set(id, callback);
+    console.log("register");
+  }
+  public removeStatusUpdateCallback(id: string) {
+    if (!this.statusUpdatesCallbacks.has(id)) return;
+    this.statusUpdatesCallbacks.delete(id);
+    console.log("unregister");
   }
 
   addAppKey(dst: string) {
@@ -199,21 +217,24 @@ class ConfigClient {
     this.bluetoothManager.sendProxyPDU(proxyPDU);
   }
 
-  getCompositionData(nodeAddress: string, page: string, devKey: string) {
+  getCompositionData(id: string) {
+    const node = this.meshConfigurationManager.getNodeById(id);
+    if (!node) return;
+
     const accessPayload = this.PDUBuilder.makeAccessPayload(
       OpCode.COMPOSITION_DATA_GET,
-      utils.swapHexEndianness(page)
+      utils.swapHexEndianness("00")
     );
 
     const proxyPDU = this.PDUBuilder.makeUnsegmentedAccessMessage({
       accessPayload: accessPayload,
       AID: this.meshConfigurationManager.getAID(),
       ctl: "00",
-      dst: nodeAddress,
+      dst: node.unicastAddress,
       encryptionKey: this.meshConfigurationManager.getEncryptionKey(),
       ivi: this.meshConfigurationManager.getIvi(),
       ivIndex: this.meshConfigurationManager.getIvIndex(),
-      key: devKey,
+      key: node.deviceKey,
       keyType: "device",
       NID: this.meshConfigurationManager.getNID(),
       privacyKey: this.meshConfigurationManager.getPrivacyKey(),
@@ -239,6 +260,8 @@ class ConfigClient {
       case OpCode.COMPOSITION_DATA_STATUS:
         const nodeComposition = this.parseCompositionData(pdu.params);
         this.meshConfigurationManager.addNodeComposition(src, nodeComposition);
+
+        this.statusUpdatesCallbacks.forEach((c) => c({ type: "composition_data", error: false }));
         break;
 
       case OpCode.APPKEY_STATUS:
@@ -248,6 +271,9 @@ class ConfigClient {
         } else {
           console.log(`appkey add error`);
         }
+        this.statusUpdatesCallbacks.forEach((c) =>
+          c({ type: "appkey_add", error: status != "00" })
+        );
         break;
 
       case OpCode.MODEL_APP_STATUS:
@@ -257,6 +283,9 @@ class ConfigClient {
         } else {
           console.log(`appkey bind error`);
         }
+        this.statusUpdatesCallbacks.forEach((c) =>
+          c({ type: "appkey_bind", error: status != "00" })
+        );
         break;
 
       case OpCode.MODEL_PUBLICATION_STATUS:
@@ -266,6 +295,7 @@ class ConfigClient {
         } else {
           console.log(`publication set error`);
         }
+        this.statusUpdatesCallbacks.forEach((c) => c({ type: "pub_set", error: status != "00" }));
         break;
 
       case OpCode.MODEL_SUBSCRIPTION_STATUS:
@@ -275,6 +305,7 @@ class ConfigClient {
         } else {
           console.log(`subscription add error`);
         }
+        this.statusUpdatesCallbacks.forEach((c) => c({ type: "sub_add", error: status != "00" }));
         break;
 
       default:

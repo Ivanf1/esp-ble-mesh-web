@@ -16,7 +16,7 @@ const ProgressBar = ({ total, completed, showLabel }: Props) => {
           whileInView={{ width: `${completed / (total / 100)}%` }}
           viewport={{ once: true }}
           transition={{
-            duration: 1,
+            duration: 0.2,
           }}
           className="h-[14px] rounded-lg bg-secondary"
         ></motion.div>

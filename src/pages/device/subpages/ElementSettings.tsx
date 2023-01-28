@@ -1,24 +1,41 @@
-import { useNavigate, useParams } from "react-router-dom";
+import { ChangeEvent, useState } from "react";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
+import BluetoothManager from "../../../bluetooth/BluetoothManager";
+import MeshConfigurationManager from "../../../bluetooth/MeshConfigurationManager";
 
-interface Props {}
-const ElementSettings = ({}: Props) => {
+interface Props {
+  BluetoothManager: BluetoothManager;
+  MeshConfigurationManager: MeshConfigurationManager;
+}
+const ElementSettings = ({ BluetoothManager, MeshConfigurationManager }: Props) => {
+  const [elementEditedName, setElementEditedName] = useState<string | null>(null);
   const navigate = useNavigate();
   const params = useParams();
+
+  const device = BluetoothManager.getDevice();
+  if (!device || !params.elementNumber) {
+    return <Navigate to="/provisioning" />;
+  }
+
+  const node = MeshConfigurationManager.getNodeById(device.id);
+  if (!node) {
+    return <Navigate to="/provisioning" />;
+  }
+
+  const element = node.elements[parseInt(params.elementNumber)];
 
   const onModelSelected = (modelNumber: number) => {
     navigate(`model/${modelNumber}`);
   };
 
-  const models = [
-    {
-      name: "Configuration Server",
-      ID: "0x0000",
-    },
-    {
-      name: "Generic OnOff Server",
-      ID: "0x0001",
-    },
-  ];
+  const handleNameChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setElementEditedName(e.target.value);
+  };
+
+  const onSave = () => {
+    if (!elementEditedName) return;
+    MeshConfigurationManager.updateElementName(node.id, element.index, elementEditedName);
+  };
 
   const arrow = "<-";
   return (
@@ -29,9 +46,9 @@ const ElementSettings = ({}: Props) => {
           <span>
             {arrow}
             <span className="link" onClick={() => navigate(-1)}>
-              DeviceName
+              {node.name}
             </span>{" "}
-            / Element {" " + params.elementNumber}
+            / {element.name ?? `Element ${params.elementNumber}`}
           </span>
 
           <div className="flex flex-col gap-10">
@@ -40,7 +57,8 @@ const ElementSettings = ({}: Props) => {
               <input
                 type="text"
                 className="border-solid border-2 p-2 border-border rounded-lg block"
-                placeholder="No Name"
+                value={elementEditedName ?? element.name}
+                onChange={handleNameChange}
               />
             </div>
 
@@ -51,10 +69,10 @@ const ElementSettings = ({}: Props) => {
                   <span>Name</span>
                   <span>ID</span>
                 </div>
-                {models.map((m, i) => (
+                {element.models.map((m, i) => (
                   <ModelItem
-                    name={m.name}
-                    ID={m.ID}
+                    name={m.modelID}
+                    ID={m.modelID}
                     onModelSelected={onModelSelected}
                     modelIdx={i}
                     key={i}
@@ -63,7 +81,9 @@ const ElementSettings = ({}: Props) => {
               </div>
             </div>
 
-            <button className="primary ml-auto">Save</button>
+            <button className="primary ml-auto" onClick={onSave}>
+              Save
+            </button>
           </div>
         </div>
       </div>

@@ -3,29 +3,29 @@ import BluetoothManager from "./bluetooth/BluetoothManager";
 import MeshConfigurationManager from "./bluetooth/MeshConfigurationManager";
 import ConfigClient from "./bluetooth/models/ConfigClient";
 import GenericOnOffClient from "./bluetooth/models/GenericOnOffClient";
-import Provisioner, { ProvisioningResult } from "./bluetooth/models/Provisioner";
+import Provisioner, { ProvisioningStatus } from "./bluetooth/models/Provisioner";
 import ProxyConfigurationClient from "./bluetooth/models/ProxyConfigurationClient";
 // import { ParsedProxyPDU } from "./bluetooth/PduParser";
 import { CONFIGURATION_API } from "./constants/bluetooth";
 import Sidemenu from "./components/Sidemenu";
 import { Outlet } from "react-router-dom";
 
-const meshConfigurationManager = new MeshConfigurationManager({
-  meshConfigurationServerUrl: CONFIGURATION_API,
-  meshConfigurationId: "1",
-});
-meshConfigurationManager.initialize();
-const bluetoothManager = new BluetoothManager({
-  meshConfigurationManager,
-});
+// const meshConfigurationManager = new MeshConfigurationManager({
+//   meshConfigurationServerUrl: CONFIGURATION_API,
+//   meshConfigurationId: "1",
+// });
+// meshConfigurationManager.initialize();
+// const bluetoothManager = new BluetoothManager({
+//   meshConfigurationManager,
+// });
 
-const provisioner = new Provisioner({ bluetoothManager, meshConfigurationManager });
-const configClient = new ConfigClient({ bluetoothManager, meshConfigurationManager });
-const onOffClient = new GenericOnOffClient({ bluetoothManager, meshConfigurationManager });
-const proxyConfigurationClient = new ProxyConfigurationClient({
-  bluetoothManager,
-  meshConfigurationManager,
-});
+// const provisioner = new Provisioner({ bluetoothManager, meshConfigurationManager });
+// const configClient = new ConfigClient({ bluetoothManager, meshConfigurationManager });
+// const onOffClient = new GenericOnOffClient({ bluetoothManager, meshConfigurationManager });
+// const proxyConfigurationClient = new ProxyConfigurationClient({
+//   bluetoothManager,
+//   meshConfigurationManager,
+// });
 
 function App() {
   const connectionButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -33,37 +33,34 @@ function App() {
   const [connected, setConnected] = useState<boolean>(false);
 
   const handleConnection = async () => {
-    if (connected) {
-      bluetoothManager.disconnect();
-      return;
-    }
-
-    const conn = await bluetoothManager.connect("proxy");
-    if (conn) {
-      setConnected(true);
-      // bluetoothManager.registerProxyPDUNotificationCallback(onProxyMessageReceived);
-      // bluetoothManager.registerDisconnectedCallback(onDisconnected);
-      if (connectionButtonRef.current) {
-        connectionButtonRef.current.innerHTML = "disconnect";
-      }
-      // configClient.addAppKey("0002");
-
-      // const blacklistFilterPDU = proxyConfigurationClient.makeBlacklistFilterPDU(
-      //   bluetoothManager.getCurrentSeq()
-      // );
-      // bluetoothManager.sendProxyPDU(blacklistFilterPDU);
-    }
+    // if (connected) {
+    //   bluetoothManager.disconnect();
+    //   return;
+    // }
+    // const conn = await bluetoothManager.connect("proxy");
+    // if (conn) {
+    //   setConnected(true);
+    //   // bluetoothManager.registerProxyPDUNotificationCallback(onProxyMessageReceived);
+    //   // bluetoothManager.registerDisconnectedCallback(onDisconnected);
+    //   if (connectionButtonRef.current) {
+    //     connectionButtonRef.current.innerHTML = "disconnect";
+    //   }
+    //   // configClient.addAppKey("0002");
+    //   // const blacklistFilterPDU = proxyConfigurationClient.makeBlacklistFilterPDU(
+    //   //   bluetoothManager.getCurrentSeq()
+    //   // );
+    //   // bluetoothManager.sendProxyPDU(blacklistFilterPDU);
+    // }
   };
 
   const handleProvision = async () => {
-    const conn = await bluetoothManager.connect("provisioning");
-
-    if (conn) {
-      // bluetoothManager.registerProxyPDUNotificationCallback(onProxyMessageReceived);
-      bluetoothManager.registerDisconnectedCallback(onDisconnected);
-      // bluetoothManager.sendProxyPDU(provisioner.makeInviteMessage());
-      provisioner!.startProvisioningProcess(onProvisioningResult);
-    }
+    // const conn = await bluetoothManager.connect("provisioning");
+    // if (conn) {
+    //   // bluetoothManager.registerProxyPDUNotificationCallback(onProxyMessageReceived);
+    //   bluetoothManager.registerDisconnectedCallback(onDisconnected);
+    //   // bluetoothManager.sendProxyPDU(provisioner.makeInviteMessage());
+    //   provisioner!.startProvisioningProcess(onProvisioningResult);
+    // }
   };
 
   const onProxyMessageReceived = (proxyPDU: string) => {
@@ -92,8 +89,8 @@ function App() {
     }
   };
 
-  const onProvisioningResult = (result: ProvisioningResult) => {
-    bluetoothManager.disconnect();
+  const onProvisioningResult = (result: ProvisioningStatus) => {
+    // bluetoothManager.disconnect();
   };
 
   // return (
