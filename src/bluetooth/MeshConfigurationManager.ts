@@ -50,19 +50,20 @@ class MeshConfigurationManager {
   }
 
   public async initialize() {
-    // const data = await this.retrieveMeshConfiguration();
-    // if (!data) {
-    //   console.log(`could not retrieve mesh configuration`);
-    //   return;
-    // }
-    if (this.getMeshConfiguration()) {
-      this.meshConfiguration = this.getMeshConfiguration();
-    } else {
-      this.newMeshConfiguration();
-      this.storeMeshConfiguration();
-    }
+    const data = await this.retrieveMeshConfiguration();
+    if (!data) {
+      console.log(`could not retrieve mesh configuration`);
 
-    // this.meshConfiguration = data;
+      if (this.getMeshConfigurationFromLocalStorage()) {
+        this.meshConfiguration = this.getMeshConfigurationFromLocalStorage();
+      } else {
+        this.newMeshConfiguration();
+        this.updateMeshConfiguration();
+      }
+    } else {
+      this.meshConfiguration = data;
+      this.storeMeshConfigurationInLocalStorage();
+    }
 
     this.netKey = this.meshConfiguration!.netKeys[0].key;
     this.appKey = this.meshConfiguration!.appKeys[0].key;
@@ -186,13 +187,13 @@ class MeshConfigurationManager {
     const element = node.elements[elementIndex];
     if (!element) return;
     element.name = elementName;
-    this.storeMeshConfiguration();
+    this.updateMeshConfiguration();
   }
   public updateGroupName(address: string, newName: string) {
     const group = this.meshConfiguration?.groups.find((g) => g.address === address);
     if (!group) return;
     group.name = newName;
-    this.storeMeshConfiguration();
+    this.updateMeshConfiguration();
   }
 
   public addNode(
@@ -231,7 +232,7 @@ class MeshConfigurationManager {
       id: id,
     });
 
-    this.storeMeshConfiguration();
+    this.updateMeshConfiguration();
   }
   public addNodeComposition(nodeUnicastAddress: string, nodeComposition: NodeComposition) {
     const idx = this.meshConfiguration?.nodes.findIndex(
@@ -281,7 +282,7 @@ class MeshConfigurationManager {
       elements: elements,
     };
 
-    this.storeMeshConfiguration();
+    this.updateMeshConfiguration();
   }
   public addAppKeyNodeById(nodeId: string, appKey: string) {
     const k = this.meshConfiguration?.appKeys.find((k) => k.key === appKey);
@@ -291,7 +292,7 @@ class MeshConfigurationManager {
     if (node.appKeys.findIndex((a) => a.index === k.index) > -1) return;
 
     node.appKeys.push({ index: k.index, updated: false });
-    this.storeMeshConfiguration();
+    this.updateMeshConfiguration();
   }
   public addAppKeyNodeByAddress(nodeAddress: string, appKey: string) {
     const k = this.meshConfiguration?.appKeys.find((k) => k.key === appKey);
@@ -301,7 +302,7 @@ class MeshConfigurationManager {
     if (node.appKeys.findIndex((a) => a.index === k.index) > -1) return;
 
     node.appKeys.push({ index: k.index, updated: false });
-    this.storeMeshConfiguration();
+    this.updateMeshConfiguration();
   }
   public addAppKeyModelNodeByAddress(
     nodeAddress: string,
@@ -319,7 +320,7 @@ class MeshConfigurationManager {
     if (model.bind.findIndex((a) => a === k.index) > -1) return;
 
     model.bind.push(k.index);
-    this.storeMeshConfiguration();
+    this.updateMeshConfiguration();
   }
   public setNodeModelPub(
     nodeAddress: string,
@@ -342,7 +343,7 @@ class MeshConfigurationManager {
       retransmit: { count: 0, interval: 50 },
       ttl: 255,
     };
-    this.storeMeshConfiguration();
+    this.updateMeshConfiguration();
   }
   public addNodeModelSub(
     nodeAddress: string,
@@ -360,7 +361,7 @@ class MeshConfigurationManager {
       return;
 
     model.subscribe.push(subAddress.toUpperCase());
-    this.storeMeshConfiguration();
+    this.updateMeshConfiguration();
   }
   public addGroup(address: string, name: string) {
     this.meshConfiguration?.groups.push({
@@ -368,7 +369,7 @@ class MeshConfigurationManager {
       name: name,
       parentAddress: "0000",
     });
-    this.storeMeshConfiguration();
+    this.updateMeshConfiguration();
   }
 
   public isAppKeyBoundedToNode(nodeAddress: string, appKey: string) {
@@ -385,7 +386,7 @@ class MeshConfigurationManager {
     );
     if (!filteredGroups) return;
     this.meshConfiguration!.groups = filteredGroups;
-    this.storeMeshConfiguration();
+    this.updateMeshConfiguration();
   }
 
   private newMeshConfiguration() {
@@ -480,8 +481,19 @@ class MeshConfigurationManager {
     const response = await fetch(
       `${this.meshConfigurationServerUrl}?id=${this.meshConfigurationId}`
     );
+    if (!response.ok) return null;
     const data = await response.json();
     return data.config as MeshNetworkConfiguration;
+  }
+  private async postMeshConfiguration() {
+    const b = {
+      id: parseInt(this.meshConfigurationId),
+      config: this.meshConfiguration,
+    };
+    fetch(`${this.meshConfigurationServerUrl}`, {
+      method: "POST",
+      body: JSON.stringify(b),
+    });
   }
 
   private getSequenceNumberFromLocalStorage = () => {
@@ -493,12 +505,16 @@ class MeshConfigurationManager {
     localStorage.setItem(SEQ_KEY, JSON.stringify(this.seq));
   };
 
-  private storeMeshConfiguration = () => {
+  private storeMeshConfigurationInLocalStorage = () => {
     localStorage.setItem(MESH_CONFIGURATION_KEY, JSON.stringify(this.meshConfiguration));
   };
-  private getMeshConfiguration = () => {
+  private getMeshConfigurationFromLocalStorage = () => {
     const mesh = localStorage.getItem(MESH_CONFIGURATION_KEY);
     return mesh ? JSON.parse(mesh) : null;
+  };
+  private updateMeshConfiguration = () => {
+    this.storeMeshConfigurationInLocalStorage();
+    this.postMeshConfiguration();
   };
 }
 
