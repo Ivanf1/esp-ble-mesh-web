@@ -161,6 +161,10 @@ const splitHexStringInChunksOfSizeX = (hex: string, x: number) => {
   return chunks;
 };
 
+const reverseStringInPlace = (str: string) => {
+  return [...str].reverse().join("");
+};
+
 const utils = {
   hexToBytes,
   bytesToHex,
@@ -177,6 +181,7 @@ const utils = {
   hexToArrayBuffer,
   swapHexEndianness,
   splitHexStringChunksOfSizeX: splitHexStringInChunksOfSizeX,
+  reverseStringInPlace,
 };
 
 export default utils;

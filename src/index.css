@@ -103,6 +103,9 @@
     @apply hover:bg-cancel hover:text-white;
     transition: 0.2s;
   }
+  button:disabled {
+    @apply bg-gray-400;
+  }
 
   div.elements-table > div:last-child,
   div.models-table > div:last-child,

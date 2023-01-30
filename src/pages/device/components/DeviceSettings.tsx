@@ -1,26 +1,81 @@
+import { SubmitHandler, useForm } from "react-hook-form";
 import { ElementModel, ProvisionedNode } from "../../../bluetooth/meshConfiguration.interface";
 import MeshConfigurationManager from "../../../bluetooth/MeshConfigurationManager";
+import ConfigClient from "../../../bluetooth/models/ConfigClient";
 
+interface IFormInput {
+  netKey: string;
+  appKey: string;
+}
 interface Props {
   device: ProvisionedNode;
   MeshConfigurationManager: MeshConfigurationManager;
+  ConfigClient: ConfigClient;
   onElementSelected: (elementNumber: number) => void;
 }
-const DeviceSettings = ({ onElementSelected, device, MeshConfigurationManager }: Props) => {
+const DeviceSettings = ({
+  onElementSelected,
+  device,
+  MeshConfigurationManager,
+  ConfigClient,
+}: Props) => {
+  const {
+    register,
+    handleSubmit,
+    getFieldState,
+    formState: { isDirty },
+    reset,
+  } = useForm<IFormInput>();
+
+  const onSubmit: SubmitHandler<IFormInput> = (data: IFormInput) => {
+    const { isDirty } = getFieldState("appKey");
+    if (isDirty) {
+      if (data.appKey != "notassigned") {
+        ConfigClient.addAppKey(device.unicastAddress);
+        reset(undefined, { keepDirty: false, keepDirtyValues: false, keepValues: true });
+      }
+    }
+  };
+
   return (
     <>
       <h5>Device Settings</h5>
       <div className="flex flex-col gap-10">
-        <div className="flex flex-col gap-2">
-          <label>Network Key</label>
-          <select
-            id="net-key"
-            defaultValue={0}
-            className="border-solid border-2 p-2 border-border rounded-lg block"
-          >
-            <option value="netkey">{MeshConfigurationManager.getNetKey()}</option>
-          </select>
-        </div>
+        <form className="flex flex-col gap-10" onSubmit={handleSubmit(onSubmit)}>
+          <div className="flex flex-col gap-2">
+            <label>Network Key</label>
+            <select
+              id="net-key"
+              defaultValue={MeshConfigurationManager.getNetKey()}
+              className="border-solid border-2 p-2 border-border rounded-lg block"
+              {...register("netKey")}
+            >
+              <option value={MeshConfigurationManager.getNetKey()}>
+                {MeshConfigurationManager.getNetKey()}
+              </option>
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label>Application Key</label>
+            <select
+              id="net-key"
+              defaultValue={
+                device.appKeys.length > 0 ? MeshConfigurationManager.getAppKey() : "notassigned"
+              }
+              className="border-solid border-2 p-2 border-border rounded-lg block"
+              {...register("appKey")}
+            >
+              <option value="notassigned">Not assigned</option>
+              <option value={MeshConfigurationManager.getAppKey()}>
+                {MeshConfigurationManager.getAppKey()}
+              </option>
+            </select>
+          </div>
+          <button className="primary ml-auto" type="submit" disabled={!isDirty}>
+            Save
+          </button>
+        </form>
 
         <div className="flex flex-col gap-2">
           <label>Elements</label>
@@ -44,8 +99,6 @@ const DeviceSettings = ({ onElementSelected, device, MeshConfigurationManager }:
             })}
           </div>
         </div>
-
-        <button className="primary ml-auto">Save</button>
       </div>
     </>
   );

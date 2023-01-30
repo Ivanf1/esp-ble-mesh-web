@@ -1,8 +1,11 @@
 import { SEQ_KEY, MESH_CONFIGURATION_KEY } from "../constants/storageKeys";
-import { MeshNetworkConfiguration, ProvisionedNodeElement } from "./meshConfiguration.interface";
+import {
+  MeshNetworkConfiguration,
+  ProvisionedNode,
+  ProvisionedNodeElement,
+} from "./meshConfiguration.interface";
 import utils from "../utils/utils";
 import crypto from "./crypto";
-import nodeTest from "node:test";
 
 export interface NodeComposition {
   cid: string;
@@ -83,6 +86,9 @@ class MeshConfigurationManager {
   public getAppKeyIndex() {
     return utils.toHex(this.meshConfiguration!.appKeys[0].index, 2);
   }
+  public getAppKeyByIndex(idx: number) {
+    return this.meshConfiguration!.appKeys[idx].key;
+  }
   public getIvIndex() {
     return this.ivIndex;
   }
@@ -136,6 +142,39 @@ class MeshConfigurationManager {
   public getProvisionerUnicastAddress() {
     return this.meshConfiguration!.nodes[0].unicastAddress;
   }
+  public getGroups() {
+    return this.meshConfiguration!.groups;
+  }
+  public getSubscribersForGroup(groupAddress: string) {
+    let subscribers: ProvisionedNode[] = [];
+
+    for (const node of this.meshConfiguration!.nodes) {
+      for (const element of node.elements) {
+        for (const model of element.models) {
+          if (model.subscribe.findIndex((a) => a.toLowerCase() === groupAddress) >= 0) {
+            subscribers.push(node);
+          }
+        }
+      }
+    }
+
+    return subscribers;
+  }
+  public getPublishersForGroup(groupAddress: string) {
+    let publishers: ProvisionedNode[] = [];
+
+    for (const node of this.meshConfiguration!.nodes) {
+      for (const element of node.elements) {
+        for (const model of element.models) {
+          if (model.publish && model.publish.address.toLowerCase() === groupAddress.toLowerCase()) {
+            publishers.push(node);
+          }
+        }
+      }
+    }
+
+    return publishers;
+  }
 
   public updateSeq() {
     this.seq++;
@@ -147,6 +186,12 @@ class MeshConfigurationManager {
     const element = node.elements[elementIndex];
     if (!element) return;
     element.name = elementName;
+    this.storeMeshConfiguration();
+  }
+  public updateGroupName(address: string, newName: string) {
+    const group = this.meshConfiguration?.groups.find((g) => g.address === address);
+    if (!group) return;
+    group.name = newName;
     this.storeMeshConfiguration();
   }
 
@@ -169,7 +214,7 @@ class MeshConfigurationManager {
     });
 
     this.meshConfiguration?.nodes.push({
-      appKeys: [{ index: 0, updated: false }],
+      appKeys: [],
       cid: "0000",
       configComplete: false,
       crpl: "0000",
@@ -188,7 +233,6 @@ class MeshConfigurationManager {
 
     this.storeMeshConfiguration();
   }
-
   public addNodeComposition(nodeUnicastAddress: string, nodeComposition: NodeComposition) {
     const idx = this.meshConfiguration?.nodes.findIndex(
       (n) => n.unicastAddress === nodeUnicastAddress
@@ -237,6 +281,110 @@ class MeshConfigurationManager {
       elements: elements,
     };
 
+    this.storeMeshConfiguration();
+  }
+  public addAppKeyNodeById(nodeId: string, appKey: string) {
+    const k = this.meshConfiguration?.appKeys.find((k) => k.key === appKey);
+    const node = this.getNodeById(nodeId);
+    if (!k || !node) return;
+    // Check if already bounded
+    if (node.appKeys.findIndex((a) => a.index === k.index) > -1) return;
+
+    node.appKeys.push({ index: k.index, updated: false });
+    this.storeMeshConfiguration();
+  }
+  public addAppKeyNodeByAddress(nodeAddress: string, appKey: string) {
+    const k = this.meshConfiguration?.appKeys.find((k) => k.key === appKey);
+    const node = this.getNodeByUnicastAddress(nodeAddress);
+    if (!k || !node) return;
+    // Check if already bounded
+    if (node.appKeys.findIndex((a) => a.index === k.index) > -1) return;
+
+    node.appKeys.push({ index: k.index, updated: false });
+    this.storeMeshConfiguration();
+  }
+  public addAppKeyModelNodeByAddress(
+    nodeAddress: string,
+    elementAddress: string,
+    modelId: string,
+    appKey: string
+  ) {
+    const k = this.meshConfiguration?.appKeys.find((k) => k.key === appKey);
+    const node = this.getNodeByUnicastAddress(nodeAddress);
+    if (!k || !node) return;
+    const element = node.elements.find((e) => e.address === elementAddress);
+    if (!element) return;
+    const model = element.models.find((m) => m.modelID === modelId);
+    if (!model) return;
+    if (model.bind.findIndex((a) => a === k.index) > -1) return;
+
+    model.bind.push(k.index);
+    this.storeMeshConfiguration();
+  }
+  public setNodeModelPub(
+    nodeAddress: string,
+    elementAddress: string,
+    modelId: string,
+    pubAddress: string
+  ) {
+    const node = this.getNodeByUnicastAddress(nodeAddress);
+    if (!node) return;
+    const element = node.elements.find((e) => e.address === elementAddress);
+    if (!element) return;
+    const model = element.models.find((m) => m.modelID === modelId);
+    if (!model) return;
+
+    model.publish = {
+      address: pubAddress,
+      credentials: 0,
+      index: 0,
+      period: { numberOfSteps: 0, resolution: 100 },
+      retransmit: { count: 0, interval: 50 },
+      ttl: 255,
+    };
+    this.storeMeshConfiguration();
+  }
+  public addNodeModelSub(
+    nodeAddress: string,
+    elementAddress: string,
+    modelId: string,
+    subAddress: string
+  ) {
+    const node = this.getNodeByUnicastAddress(nodeAddress);
+    if (!node) return;
+    const element = node.elements.find((e) => e.address === elementAddress);
+    if (!element) return;
+    const model = element.models.find((m) => m.modelID === modelId);
+    if (!model) return;
+    if (model.subscribe.findIndex((sub) => sub.toLowerCase() === subAddress.toLowerCase()) > -1)
+      return;
+
+    model.subscribe.push(subAddress.toUpperCase());
+    this.storeMeshConfiguration();
+  }
+  public addGroup(address: string, name: string) {
+    this.meshConfiguration?.groups.push({
+      address: address,
+      name: name,
+      parentAddress: "0000",
+    });
+    this.storeMeshConfiguration();
+  }
+
+  public isAppKeyBoundedToNode(nodeAddress: string, appKey: string) {
+    const k = this.meshConfiguration?.appKeys.find((k) => k.key === appKey);
+    const node = this.getNodeByUnicastAddress(nodeAddress);
+    if (!k || !node) return false;
+
+    return node.appKeys.findIndex((a) => a.index === k.index) > -1;
+  }
+
+  public deleteGroup(address: string) {
+    const filteredGroups = this.meshConfiguration?.groups.filter(
+      (g) => g.address.toLowerCase() !== address.toLowerCase()
+    );
+    if (!filteredGroups) return;
+    this.meshConfiguration!.groups = filteredGroups;
     this.storeMeshConfiguration();
   }
 

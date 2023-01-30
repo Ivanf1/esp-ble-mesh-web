@@ -1,50 +1,122 @@
 import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
-import { WithContext as ReactTags } from "react-tag-input";
-interface Tag {
-  id: string;
-  text: string;
+import { SubmitHandler, useForm } from "react-hook-form";
+import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
+import { Tag, WithContext as ReactTags } from "react-tag-input";
+import BluetoothManager from "../../../bluetooth/BluetoothManager";
+import MeshConfigurationManager from "../../../bluetooth/MeshConfigurationManager";
+import ConfigClient from "../../../bluetooth/models/ConfigClient";
+
+interface IFormInput {
+  appKey: string;
+  pubAddress: string;
 }
-
-interface Props {}
-const ModelSettings = ({}: Props) => {
-  const navigate = useNavigate();
-  const params = useParams();
-
+type QueryParams = {
+  elementNumber: string;
+  modelNumber: string;
+};
+interface Props {
+  BluetoothManager: BluetoothManager;
+  MeshConfigurationManager: MeshConfigurationManager;
+  ConfigClient: ConfigClient;
+}
+const ModelSettings = ({ BluetoothManager, MeshConfigurationManager, ConfigClient }: Props) => {
   const arrow = "<-";
+  const navigate = useNavigate();
+  const params = useParams<QueryParams>();
 
-  const [tags, setTags] = useState([
-    { id: "0x000C", text: "0x000C" },
-    { id: "0x000D", text: "0x000D" },
-    { id: "0x0003", text: "0x0003" },
-    { id: "0x000F", text: "0x000F" },
-  ]);
+  if (!params.elementNumber || !params.modelNumber) {
+    return <Navigate to="/provisioning" />;
+  }
 
-  const suggestions = [
-    { id: "0x000C", text: "0x000C" },
-    { id: "0x000D", text: "0x000D" },
-    { id: "0x0003", text: "0x0003" },
-    { id: "0x000F", text: "0x000F" },
-  ];
+  const device = BluetoothManager.getDevice();
+  if (!device) {
+    return <Navigate to="/provisioning" />;
+  }
 
-  const handleDelete = (i: number) => {
-    setTags(tags.filter((_, index) => index !== i));
+  const node = MeshConfigurationManager.getNodeById(device.id);
+  if (!node) {
+    return <Navigate to="/provisioning" />;
+  }
+
+  const elementNumber = parseInt(params.elementNumber);
+  const modelNumber = parseInt(params.modelNumber);
+  const element = node.elements[elementNumber];
+  const model = element.models[modelNumber];
+
+  const {
+    register,
+    handleSubmit,
+    getFieldState,
+    formState: { isDirty },
+    reset,
+  } = useForm<IFormInput>();
+
+  const meshGroups = MeshConfigurationManager.getGroups();
+  const nodeSubscriptionGroups = node.elements[elementNumber].models[modelNumber].subscribe;
+  const [isNodePubAddressDirty, setIsNodePubAddressDirty] = useState<boolean>(false);
+
+  const [nodePubAddresses, setNodePubAddresses] = useState(
+    nodeSubscriptionGroups.map((groupAddress) => {
+      return { id: groupAddress, text: groupAddress };
+    })
+  );
+
+  const pubAddressSuggestions = meshGroups.map((g) => {
+    return { id: g.address, text: g.address };
+  });
+
+  const handlePubAddressDelete = (i: number) => {
+    setNodePubAddresses(nodePubAddresses.filter((_, index) => index !== i));
+    setIsNodePubAddressDirty(true);
   };
 
-  const handleAddition = (tag: Tag) => {
+  const handlePubAddressAddition = (tag: Tag) => {
     const lowerCaseQuery = tag.text.toLowerCase();
 
-    if (suggestions.find((t) => t.text.toLowerCase() === lowerCaseQuery)) {
-      setTags([...tags, tag]);
+    if (pubAddressSuggestions.find((t) => t.text.toLowerCase() === lowerCaseQuery)) {
+      setNodePubAddresses([...nodePubAddresses, tag]);
+      setIsNodePubAddressDirty(true);
     }
   };
 
-  const suggestionFilter = (textInputValue: string, possibleSuggestionsArray: Tag[]) => {
+  const pubAddressSuggestionFilter = (textInputValue: string, possibleSuggestionsArray: Tag[]) => {
     const lowerCaseQuery = textInputValue.toLowerCase();
 
     return possibleSuggestionsArray.filter((suggestion) => {
       return suggestion.text.toLowerCase().includes(lowerCaseQuery);
     });
+  };
+
+  const onSubmit: SubmitHandler<IFormInput> = (data: IFormInput) => {
+    const appKeyState = getFieldState("appKey");
+    if (appKeyState.isDirty && data.appKey != "notassigned") {
+      ConfigClient.modelAppKeyBind(node.unicastAddress, element.address, model.modelID);
+    }
+
+    const pubAddressState = getFieldState("pubAddress");
+    if (pubAddressState.isDirty && data.pubAddress != "notassigned") {
+      ConfigClient.modelPublicationSet(
+        node.unicastAddress,
+        element.address,
+        data.pubAddress,
+        model.modelID
+      );
+    }
+
+    if (isNodePubAddressDirty) {
+      const pubAddressesToAdd = nodePubAddresses.filter(
+        (t) => nodeSubscriptionGroups.findIndex((g) => g.toLowerCase() === t.id.toLowerCase()) < 0
+      );
+
+      pubAddressesToAdd.forEach((g) =>
+        ConfigClient.modelSubscriptionAdd(node.unicastAddress, element.address, g.id, model.modelID)
+      );
+    }
+
+    if (appKeyState.isDirty || pubAddressState.isDirty || isNodePubAddressDirty) {
+      reset(undefined, { keepDirty: false, keepDirtyValues: false, keepValues: true });
+      setIsNodePubAddressDirty(false);
+    }
   };
 
   return (
@@ -55,71 +127,95 @@ const ModelSettings = ({}: Props) => {
           <span>
             {arrow}
             <span className="link" onClick={() => navigate(-2)}>
-              DeviceName
+              {device.name}
             </span>{" "}
             /{" "}
             <span className="link" onClick={() => navigate(-1)}>
-              Element {" " + params.elementNumber}
+              Element {" " + elementNumber}
             </span>{" "}
-            / Model {" " + params.modelNumber}
+            / Model {" " + modelNumber}
           </span>
 
           <div className="flex flex-col gap-10">
-            <div className="flex flex-col gap-2">
-              <label>Application Key</label>
-              <select
-                id="net-key"
-                className="border-solid border-2 p-2 border-border rounded-lg block"
-                defaultValue={0}
+            <form className="flex flex-col gap-10" onSubmit={handleSubmit(onSubmit)}>
+              <div className="flex flex-col gap-2">
+                <label>Application Key</label>
+                <select
+                  id="net-key"
+                  className="border-solid border-2 p-2 border-border rounded-lg block"
+                  defaultValue={
+                    model.bind.length > 0
+                      ? MeshConfigurationManager.getAppKeyByIndex(model.bind[0])
+                      : "notassigned"
+                  }
+                  {...register("appKey")}
+                >
+                  <option value="notassigned">Not assigned</option>
+                  <option value={MeshConfigurationManager.getAppKey()}>
+                    {MeshConfigurationManager.getAppKey()}
+                  </option>
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <div className="flex">
+                  <label>Publication</label>
+                  <Link to={"/mesh"} className="ml-auto text-sm mt-0 link">
+                    Manage Groups
+                  </Link>
+                </div>
+                <select
+                  id="publicationAddress"
+                  className="border-solid border-2 p-2 border-border rounded-lg block"
+                  defaultValue={
+                    model.publish != undefined && model.publish.address != ""
+                      ? model.publish.address
+                      : "notassigned"
+                  }
+                  {...register("pubAddress")}
+                >
+                  <option value="notassigned">Not assigned</option>
+                  {meshGroups.map((g, i) => (
+                    <option value={g.address} key={i}>
+                      {g.name} - {g.address}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <div className="flex">
+                  <label>Subscriptions</label>
+                  <Link to={"/mesh"} className="ml-auto text-sm mt-0 link">
+                    Manage Groups
+                  </Link>
+                </div>
+                <div className="border-solid border-2 border-border rounded-lg">
+                  <ReactTags
+                    tags={nodePubAddresses}
+                    suggestions={pubAddressSuggestions}
+                    handleDelete={handlePubAddressDelete}
+                    handleAddition={handlePubAddressAddition}
+                    inline={false}
+                    allowDragDrop={false}
+                    handleFilterSuggestions={pubAddressSuggestionFilter}
+                    allowUnique={true}
+                    maxLength={6}
+                    minQueryLength={1}
+                    placeholder="Add subscription"
+                    autofocus={false}
+                  />
+                </div>
+              </div>
+
+              <button
+                className="primary ml-auto"
+                type="submit"
+                disabled={!isDirty && !isNodePubAddressDirty}
               >
-                <option>Not assigned</option>
-                <option value="abcdefghi">abcdefghi</option>
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <div className="flex">
-                <label>Publication</label>
-                <Link to={"/mesh"} className="ml-auto text-sm mt-0 link">
-                  Manage Groups
-                </Link>
-              </div>
-              <select
-                id="net-key"
-                className="border-solid border-2 p-2 border-border rounded-lg block"
-                defaultValue={0}
-              >
-                <option>Not assigned</option>
-                <option value="abcdefghi">abcdefghi</option>
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <div className="flex">
-                <label>Subscriptions</label>
-                <Link to={"/mesh"} className="ml-auto text-sm mt-0 link">
-                  Manage Groups
-                </Link>
-              </div>
-              <div className="border-solid border-2 border-border rounded-lg">
-                <ReactTags
-                  tags={tags}
-                  suggestions={suggestions}
-                  handleDelete={handleDelete}
-                  handleAddition={handleAddition}
-                  inline={false}
-                  allowDragDrop={false}
-                  handleFilterSuggestions={suggestionFilter}
-                  allowUnique={true}
-                  maxLength={6}
-                  minQueryLength={1}
-                  placeholder="Add subscription"
-                  autofocus={false}
-                />
-              </div>
-            </div>
-
-            <button className="primary ml-auto">Save</button>
+                Save
+              </button>
+            </form>
           </div>
         </div>
       </div>

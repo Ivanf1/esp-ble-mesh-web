@@ -1,4 +1,3 @@
-import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./index.css";
@@ -37,12 +36,18 @@ const proxyConfigurationClient = new ProxyConfigurationClient({
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <App />,
+    element: <App configClient={configClient} />,
     errorElement: <ErrorPage />,
     children: [
       {
         path: "device/element/:elementNumber/model/:modelNumber",
-        element: <ModelSettings />,
+        element: (
+          <ModelSettings
+            BluetoothManager={bluetoothManager}
+            MeshConfigurationManager={meshConfigurationManager}
+            ConfigClient={configClient}
+          />
+        ),
       },
       {
         path: "device/element/:elementNumber",
@@ -75,7 +80,7 @@ const router = createBrowserRouter([
       },
       {
         path: "mesh",
-        element: <Mesh />,
+        element: <Mesh MeshConfigurationManager={meshConfigurationManager} />,
       },
     ],
   },

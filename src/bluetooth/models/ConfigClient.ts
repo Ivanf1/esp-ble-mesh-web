@@ -48,18 +48,24 @@ class ConfigClient {
 
   public registerStatusUpdateCallback(id: string, callback: StatusUpdateCallback) {
     this.statusUpdatesCallbacks.set(id, callback);
-    console.log("register");
   }
   public removeStatusUpdateCallback(id: string) {
     if (!this.statusUpdatesCallbacks.has(id)) return;
     this.statusUpdatesCallbacks.delete(id);
-    console.log("unregister");
   }
 
-  addAppKey(dst: string) {
-    const devKey = this.meshConfigurationManager.getNodeDevKey(dst);
+  addAppKey(nodeAddress: string) {
+    const devKey = this.meshConfigurationManager.getNodeDevKey(nodeAddress);
+    if (
+      this.meshConfigurationManager.isAppKeyBoundedToNode(
+        nodeAddress,
+        this.meshConfigurationManager.getAppKey()
+      )
+    )
+      return;
+
     if (!devKey) {
-      console.log(`No node in mesh with address: ${dst}`);
+      console.log(`No node in mesh with address: ${nodeAddress}`);
       return;
     }
 
@@ -72,7 +78,7 @@ class ConfigClient {
       accessPayload,
       AID: this.meshConfigurationManager.getAID(),
       ctl: "00",
-      dst: dst,
+      dst: nodeAddress,
       encryptionKey: this.meshConfigurationManager.getEncryptionKey(),
       ivi: this.meshConfigurationManager.getIvi(),
       ivIndex: this.meshConfigurationManager.getIvIndex(),
@@ -83,7 +89,7 @@ class ConfigClient {
       seq: this.meshConfigurationManager.getSeq(),
       src: this.meshConfigurationManager.getProvisionerUnicastAddress(),
       nonceType: "network",
-      ttl: this.meshConfigurationManager.getDefaultTTLForNode(dst) ?? "05",
+      ttl: this.meshConfigurationManager.getDefaultTTLForNode(nodeAddress) ?? "05",
       messageType: MessageType.NETWORK_PDU,
     });
 
@@ -173,6 +179,13 @@ class ConfigClient {
 
     console.log(`sending config model publication set: ${proxyPDU}`);
     this.bluetoothManager.sendProxyPDU(proxyPDU);
+
+    this.meshConfigurationManager.setNodeModelPub(
+      nodeAddress,
+      elementAddress,
+      modelId,
+      publishAddress
+    );
   }
 
   modelSubscriptionAdd(
@@ -215,6 +228,13 @@ class ConfigClient {
 
     console.log(`sending config model subscription add: ${proxyPDU}`);
     this.bluetoothManager.sendProxyPDU(proxyPDU);
+
+    this.meshConfigurationManager.addNodeModelSub(
+      nodeAddress,
+      elementAddress,
+      modelId,
+      subscriptionAddress
+    );
   }
 
   getCompositionData(id: string) {
@@ -255,6 +275,8 @@ class ConfigClient {
 
   private parseConfigMessage(pdu: AccessPayloadData, src: string) {
     let status = "";
+    let elementAddress = "";
+    let modelId = "";
 
     switch (pdu.opcode as OpCode) {
       case OpCode.COMPOSITION_DATA_STATUS:
@@ -268,6 +290,10 @@ class ConfigClient {
         status = pdu.params.substring(0, 2);
         if (status == "00") {
           console.log(`appkey add successful`);
+          this.meshConfigurationManager.addAppKeyNodeByAddress(
+            src,
+            this.meshConfigurationManager.getAppKey()
+          );
         } else {
           console.log(`appkey add error`);
         }
@@ -278,8 +304,16 @@ class ConfigClient {
 
       case OpCode.MODEL_APP_STATUS:
         status = pdu.params.substring(0, 2);
+        elementAddress = utils.swapHexEndianness(pdu.params.substring(2, 6));
+        modelId = utils.reverseStringInPlace(pdu.params.substring(9, 13));
         if (status == "00") {
           console.log(`appkey bind successful`);
+          this.meshConfigurationManager.addAppKeyModelNodeByAddress(
+            src,
+            elementAddress,
+            modelId,
+            this.meshConfigurationManager.getAppKey()
+          );
         } else {
           console.log(`appkey bind error`);
         }
@@ -290,6 +324,9 @@ class ConfigClient {
 
       case OpCode.MODEL_PUBLICATION_STATUS:
         status = pdu.params.substring(0, 2);
+        elementAddress = utils.swapHexEndianness(pdu.params.substring(2, 6));
+        const publishAddress = pdu.params.substring(6, 10);
+        modelId = utils.reverseStringInPlace(pdu.params.substring(pdu.params.length - 4));
         if (status == "00") {
           console.log(`publication set successful`);
         } else {
@@ -302,6 +339,8 @@ class ConfigClient {
         status = pdu.params.substring(0, 2);
         if (status == "00") {
           console.log(`subscription add successful`);
+          elementAddress = utils.swapHexEndianness(pdu.params.substring(2, 6));
+          modelId = utils.reverseStringInPlace(pdu.params.substring(9, 13));
         } else {
           console.log(`subscription add error`);
         }

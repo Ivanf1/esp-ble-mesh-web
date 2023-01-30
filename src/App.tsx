@@ -27,7 +27,10 @@ import { Outlet } from "react-router-dom";
 //   meshConfigurationManager,
 // });
 
-function App() {
+interface Props {
+  configClient: ConfigClient;
+}
+function App({ configClient }: Props) {
   const connectionButtonRef = useRef<HTMLButtonElement | null>(null);
   const ledStatusRef = useRef<HTMLParagraphElement | null>(null);
   const [connected, setConnected] = useState<boolean>(false);
@@ -133,12 +136,12 @@ function App() {
   //       >
   //         bind client
   //       </button>
-  //       <button
-  //         className="mt-4 px-8 py-2 rounded-md text-white bg-red-600"
-  //         onClick={() => configClient.modelSubscriptionAdd("0002", "0003", "c000", "1000")}
-  //       >
-  //         sub add
-  //       </button>
+  // <button
+  //   className="mt-4 px-8 py-2 rounded-md text-white bg-red-600"
+  //   onClick={() => configClient.modelSubscriptionAdd("0002", "0003", "c000", "1000")}
+  // >
+  //   sub add
+  // </button>;
   //       <button
   //         className="mt-4 px-8 py-2 rounded-md text-white bg-red-600"
   //         onClick={() => configClient.modelPublicationSet("0005", "0005", "c000", "1001")}

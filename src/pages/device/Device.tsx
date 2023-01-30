@@ -45,6 +45,7 @@ const Settings = ({ BluetoothManager, ConfigClient, MeshConfigurationManager }: 
             onElementSelected={onElementSelected}
             device={node!}
             MeshConfigurationManager={MeshConfigurationManager}
+            ConfigClient={ConfigClient}
           />
         </div>
         <div>

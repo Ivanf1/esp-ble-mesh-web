@@ -1,14 +1,17 @@
-import { ChangeEvent, useState } from "react";
+import { useForm } from "react-hook-form";
+import { SubmitHandler } from "react-hook-form/dist/types";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import BluetoothManager from "../../../bluetooth/BluetoothManager";
 import MeshConfigurationManager from "../../../bluetooth/MeshConfigurationManager";
 
+interface IFormInput {
+  elementName: string;
+}
 interface Props {
   BluetoothManager: BluetoothManager;
   MeshConfigurationManager: MeshConfigurationManager;
 }
 const ElementSettings = ({ BluetoothManager, MeshConfigurationManager }: Props) => {
-  const [elementEditedName, setElementEditedName] = useState<string | null>(null);
   const navigate = useNavigate();
   const params = useParams();
 
@@ -22,19 +25,26 @@ const ElementSettings = ({ BluetoothManager, MeshConfigurationManager }: Props) 
     return <Navigate to="/provisioning" />;
   }
 
+  const {
+    register,
+    handleSubmit,
+    getFieldState,
+    formState: { isDirty },
+    reset,
+  } = useForm<IFormInput>();
+
   const element = node.elements[parseInt(params.elementNumber)];
 
   const onModelSelected = (modelNumber: number) => {
     navigate(`model/${modelNumber}`);
   };
 
-  const handleNameChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setElementEditedName(e.target.value);
-  };
-
-  const onSave = () => {
-    if (!elementEditedName) return;
-    MeshConfigurationManager.updateElementName(node.id, element.index, elementEditedName);
+  const onSubmit: SubmitHandler<IFormInput> = (data: IFormInput) => {
+    const { isDirty } = getFieldState("elementName");
+    if (isDirty) {
+      MeshConfigurationManager.updateElementName(node.id, element.index, data.elementName);
+      reset(undefined, { keepDirty: false, keepDirtyValues: false, keepValues: true });
+    }
   };
 
   const arrow = "<-";
@@ -52,15 +62,20 @@ const ElementSettings = ({ BluetoothManager, MeshConfigurationManager }: Props) 
           </span>
 
           <div className="flex flex-col gap-10">
-            <div className="flex flex-col gap-2">
-              <label>Name</label>
-              <input
-                type="text"
-                className="border-solid border-2 p-2 border-border rounded-lg block"
-                value={elementEditedName ?? element.name}
-                onChange={handleNameChange}
-              />
-            </div>
+            <form className="flex flex-col gap-10" onSubmit={handleSubmit(onSubmit)}>
+              <div className="flex flex-col gap-2">
+                <label>Name</label>
+                <input
+                  type="text"
+                  className="border-solid border-2 p-2 border-border rounded-lg block"
+                  defaultValue={element.name}
+                  {...register("elementName")}
+                />
+              </div>
+              <button className="primary ml-auto" type="submit" disabled={!isDirty}>
+                Save
+              </button>
+            </form>
 
             <div className="flex flex-col gap-2">
               <label>Models</label>
@@ -80,10 +95,6 @@ const ElementSettings = ({ BluetoothManager, MeshConfigurationManager }: Props) 
                 ))}
               </div>
             </div>
-
-            <button className="primary ml-auto" onClick={onSave}>
-              Save
-            </button>
           </div>
         </div>
       </div>

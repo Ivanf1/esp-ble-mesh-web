@@ -1,4 +1,5 @@
 import { ChangeEvent, useState } from "react";
+import MeshConfigurationManager from "../../bluetooth/MeshConfigurationManager";
 
 interface Group {
   name: string;
@@ -6,56 +7,27 @@ interface Group {
   subscribers: number;
   publishers: number;
 }
-const Mesh = () => {
-  const [groups, setGroups] = useState<Group[]>([
-    {
-      name: "not assigned",
-      address: "0x000C",
-      subscribers: 2,
-      publishers: 1,
-    },
-    {
-      name: "not assigned",
-      address: "0x000A",
-      subscribers: 2,
-      publishers: 1,
-    },
-    {
-      name: "not assigned",
-      address: "0x000E",
-      subscribers: 2,
-      publishers: 1,
-    },
-    {
-      name: "not assigned",
-      address: "0x000F",
-      subscribers: 2,
-      publishers: 1,
-    },
-    {
-      name: "not assigned",
-      address: "0x000B",
-      subscribers: 2,
-      publishers: 1,
-    },
-  ]);
-
+interface Props {
+  MeshConfigurationManager: MeshConfigurationManager;
+}
+const Mesh = ({ MeshConfigurationManager }: Props) => {
   const [isAddingGroup, setIsAddingGroup] = useState<boolean>(false);
+  const [groups, setGroups] = useState(MeshConfigurationManager.getGroups());
 
   const handleAddGroup = (group: NewGroup) => {
-    setGroups((g) => [
-      ...g,
-      { name: group.name, address: group.address, publishers: 0, subscribers: 0 },
-    ]);
+    MeshConfigurationManager.addGroup(group.address, group.name);
     setIsAddingGroup(false);
+    setGroups(MeshConfigurationManager.getGroups());
   };
 
   const handleDeleteGroup = (address: string) => {
-    const filteredGroups = groups.filter((g) => g.address !== address);
-    setGroups(filteredGroups);
+    MeshConfigurationManager.deleteGroup(address);
+    setGroups(MeshConfigurationManager.getGroups());
   };
 
-  const handleEditGroup = (group: EditedGroup) => {};
+  const handleEditGroup = (group: EditedGroup) => {
+    MeshConfigurationManager.updateGroupName(group.address, group.name);
+  };
 
   const onCreateGroupClick = () => {
     if (isAddingGroup) return;
@@ -76,8 +48,7 @@ const Mesh = () => {
                 defaultValue={1}
                 className="border-solid border-2 p-2 border-border rounded-lg block"
               >
-                <option>Not assigned</option>
-                <option value="abcdefghi">abcdefghi</option>
+                <option value="abcdefghi">{MeshConfigurationManager.getNetKey()}</option>
               </select>
             </div>
 
@@ -88,8 +59,7 @@ const Mesh = () => {
                 defaultValue={1}
                 className="border-solid border-2 p-2 border-border rounded-lg block"
               >
-                <option>Not assigned</option>
-                <option value="abcdefghi">abcdefghi</option>
+                <option value="abcdefghi">{MeshConfigurationManager.getAppKey()}</option>
               </select>
             </div>
 
@@ -108,8 +78,10 @@ const Mesh = () => {
                     <GroupsTableElement
                       address={g.address}
                       name={g.name}
-                      publishers={g.publishers}
-                      subscribers={g.subscribers}
+                      publishers={MeshConfigurationManager.getPublishersForGroup(g.address).length}
+                      subscribers={
+                        MeshConfigurationManager.getSubscribersForGroup(g.address).length
+                      }
                       onDeleteGroup={handleDeleteGroup}
                       onSaveEditGroup={handleEditGroup}
                       key={i}
