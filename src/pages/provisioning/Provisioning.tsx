@@ -107,10 +107,10 @@ interface ConnectionPanelProps {
 const ConnectionPanel = ({ onConnectClick, onProvisionClick }: ConnectionPanelProps) => {
   return (
     <div className="mx-auto">
-      <div className="py-10 rounded-lg border-solid border-2 border-border flex flex-col items-center gap-10">
+      <div className="py-24 rounded-lg border-solid border-2 border-border flex flex-col items-center gap-10">
         <ConnectSVG />
         <h4>Connect to a device</h4>
-        <div className="min-w-full grid grid-cols-[1fr_auto_1fr] mt-10">
+        <div className="min-w-full grid grid-cols-[1fr_auto_1fr] mt-12">
           <div className="flex flex-col items-center gap-4 py-6">
             <span className="text-center">Connect to an already provisioned Proxy Server</span>
             <button className="primary mx-auto" onClick={onConnectClick}>
