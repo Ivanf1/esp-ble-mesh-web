@@ -67,8 +67,7 @@ class BluetoothManager {
     if (!serviceAndCharacteristicsUUID) return;
 
     const options: RequestDeviceOptions = {
-      filters: [{ name: "ESP-BLE-MESH" }],
-      optionalServices: [serviceAndCharacteristicsUUID.service], // Required to access service later.
+      filters: [{ services: [serviceAndCharacteristicsUUID.service] }],
     };
 
     try {
