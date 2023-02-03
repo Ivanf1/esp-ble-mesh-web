@@ -2,6 +2,7 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./index.css";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { CONFIGURATION_API } from "./constants/bluetooth";
 import Device from "./pages/device/Device";
 import Provisioning from "./pages/provisioning/Provisioning";
 import ErrorPage from "./pages/error/ErrorPage";
@@ -14,7 +15,7 @@ import ConfigClient from "./bluetooth/models/ConfigClient";
 import GenericOnOffClient from "./bluetooth/models/GenericOnOffClient";
 import Provisioner from "./bluetooth/models/Provisioner";
 import ProxyConfigurationClient from "./bluetooth/models/ProxyConfigurationClient";
-import { CONFIGURATION_API } from "./constants/bluetooth";
+import Dashboard from "./pages/dashboard/Dashboard";
 
 const meshConfigurationManager = new MeshConfigurationManager({
   meshConfigurationServerUrl: CONFIGURATION_API,
@@ -39,6 +40,15 @@ const router = createBrowserRouter([
     element: <App configClient={configClient} />,
     errorElement: <ErrorPage />,
     children: [
+      {
+        path: "dashboard",
+        element: (
+          <Dashboard
+            BluetoothManager={bluetoothManager}
+            ProxyConfigurationClient={proxyConfigurationClient}
+          />
+        ),
+      },
       {
         path: "device/element/:elementNumber/model/:modelNumber",
         element: (
