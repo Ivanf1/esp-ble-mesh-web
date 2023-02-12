@@ -58,7 +58,7 @@ const Provisioning = ({ BluetoothManager, Provisioner, ConfigClient }: Props) =>
   };
 
   return (
-    <>
+    <div className="min-h-full max-w-7xl mx-auto pt-16">
       <h2 className="mb-16">Connect</h2>
       {BluetoothManager.getDevice() ? (
         <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-10">
@@ -96,7 +96,7 @@ const Provisioning = ({ BluetoothManager, Provisioner, ConfigClient }: Props) =>
       ) : (
         <ConnectionPanel onConnectClick={onConnectClick} onProvisionClick={onProvisionClick} />
       )}
-    </>
+    </div>
   );
 };
 

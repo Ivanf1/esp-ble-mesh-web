@@ -37,7 +37,7 @@ const Settings = ({ BluetoothManager, ConfigClient, MeshConfigurationManager }: 
   };
 
   return (
-    <>
+    <div className="min-h-full max-w-7xl mx-auto pt-16">
       <h2 className="mb-16">Device</h2>
       <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-10">
         <div className="flex flex-col gap-10">
@@ -82,7 +82,7 @@ const Settings = ({ BluetoothManager, ConfigClient, MeshConfigurationManager }: 
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 

@@ -158,9 +158,9 @@ function App({ configClient }: Props) {
       <Sidemenu />
       <div className="ml-[260px] min-h-screen flex">
         <main className="min-w-full px-5 2xl:px-0">
-          <div className="min-h-full max-w-7xl mx-auto pt-16">
-            <Outlet />
-          </div>
+          {/* <div className="min-h-full max-w-7xl mx-auto pt-16"> */}
+          <Outlet />
+          {/* </div> */}
         </main>
       </div>
     </>

@@ -120,6 +120,9 @@ class MeshConfigurationManager {
   public getSeq() {
     return this.seq;
   }
+  public getNodes() {
+    return this.meshConfiguration?.nodes;
+  }
   public getNodeById(id: string) {
     return this.meshConfiguration?.nodes.find((n) => n.id === id);
   }
@@ -152,7 +155,9 @@ class MeshConfigurationManager {
     for (const node of this.meshConfiguration!.nodes) {
       for (const element of node.elements) {
         for (const model of element.models) {
-          if (model.subscribe.findIndex((a) => a.toLowerCase() === groupAddress) >= 0) {
+          if (
+            model.subscribe.findIndex((a) => a.toLowerCase() === groupAddress.toLowerCase()) >= 0
+          ) {
             subscribers.push(node);
           }
         }

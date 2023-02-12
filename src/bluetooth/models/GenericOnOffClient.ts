@@ -2,12 +2,17 @@ import PDUBuilder, { MessageType } from "../PduBuilder";
 import utils from "../../utils/utils";
 import MeshConfigurationManager from "../MeshConfigurationManager";
 import BluetoothManager from "../BluetoothManager";
+import { ProxyPDU } from "../PduParser";
 
 enum OpCode {
   GET = "8201",
   SET = "8202",
   SET_UNACK = "8203",
 }
+export interface OnOffClientStatusUpdate {
+  status: number;
+}
+type StatusUpdateCallback = (status: OnOffClientStatusUpdate) => void;
 interface GenericOnOffClientProps {
   bluetoothManager: BluetoothManager;
   meshConfigurationManager: MeshConfigurationManager;
@@ -21,11 +26,25 @@ class GenericOnOffClient {
   private bluetoothManager: BluetoothManager;
   private meshConfigurationManager: MeshConfigurationManager;
   private PDUBuilder: PDUBuilder;
+  private statusUpdatesCallbacks: Map<string, StatusUpdateCallback>;
 
   constructor(configuration: GenericOnOffClientProps) {
     this.bluetoothManager = configuration.bluetoothManager;
     this.meshConfigurationManager = configuration.meshConfigurationManager;
     this.PDUBuilder = PDUBuilder.getInstance();
+    this.bluetoothManager.registerProxyPDUNotificationCallback(
+      (pdu) => this.onProxyPDUReceived(pdu),
+      MessageType.NETWORK_PDU
+    );
+    this.statusUpdatesCallbacks = new Map();
+  }
+
+  public registerStatusUpdateCallback(id: string, callback: StatusUpdateCallback) {
+    this.statusUpdatesCallbacks.set(id, callback);
+  }
+  public removeStatusUpdateCallback(id: string) {
+    if (!this.statusUpdatesCallbacks.has(id)) return;
+    this.statusUpdatesCallbacks.delete(id);
   }
 
   public sendSetMessage(on: boolean, dst: string, ttl?: string) {
@@ -61,6 +80,12 @@ class GenericOnOffClient {
     });
 
     this.bluetoothManager.sendProxyPDU(proxyPDU);
+  }
+
+  private onProxyPDUReceived(pdu: ProxyPDU) {
+    this.statusUpdatesCallbacks.forEach((c) =>
+      c({ status: parseInt(pdu.data.params.substring(0, 2)) })
+    );
   }
 }
 

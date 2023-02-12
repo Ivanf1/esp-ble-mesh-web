@@ -49,7 +49,7 @@ const ElementSettings = ({ BluetoothManager, MeshConfigurationManager }: Props) 
 
   const arrow = "<-";
   return (
-    <>
+    <div className="min-h-full max-w-7xl mx-auto pt-16">
       <h2 className="mb-16">Settings</h2>
       <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-10">
         <div className="flex flex-col gap-10">
@@ -98,7 +98,7 @@ const ElementSettings = ({ BluetoothManager, MeshConfigurationManager }: Props) 
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 

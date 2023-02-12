@@ -16,12 +16,13 @@ import GenericOnOffClient from "./bluetooth/models/GenericOnOffClient";
 import Provisioner from "./bluetooth/models/Provisioner";
 import ProxyConfigurationClient from "./bluetooth/models/ProxyConfigurationClient";
 import Dashboard from "./pages/dashboard/Dashboard";
+import Graph from "./pages/graph/Graph";
 
 const meshConfigurationManager = new MeshConfigurationManager({
   meshConfigurationServerUrl: CONFIGURATION_API,
   meshConfigurationId: "1",
 });
-meshConfigurationManager.initialize();
+await meshConfigurationManager.initialize();
 const bluetoothManager = new BluetoothManager({
   meshConfigurationManager,
 });
@@ -46,6 +47,7 @@ const router = createBrowserRouter([
           <Dashboard
             BluetoothManager={bluetoothManager}
             ProxyConfigurationClient={proxyConfigurationClient}
+            GenericOnOffClient={onOffClient}
           />
         ),
       },
@@ -92,12 +94,14 @@ const router = createBrowserRouter([
         path: "mesh",
         element: <Mesh MeshConfigurationManager={meshConfigurationManager} />,
       },
+      {
+        path: "graph",
+        element: <Graph MeshConfigurationManager={meshConfigurationManager} />,
+      },
     ],
   },
 ]);
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-  // <React.StrictMode>
   <RouterProvider router={router} />
-  // </React.StrictMode>
 );
