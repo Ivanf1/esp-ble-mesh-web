@@ -447,6 +447,16 @@ class MeshConfigurationManager {
                   modelID: "1102", // Sensor Client
                   subscribe: [],
                 },
+                {
+                  bind: [0],
+                  modelID: "000002e5", // WiFi Config Client
+                  subscribe: [],
+                },
+                {
+                  bind: [0],
+                  modelID: "000202e5", // MQTT Config Client
+                  subscribe: [],
+                },
               ],
               name: "Primary Element",
               address: "0001",
