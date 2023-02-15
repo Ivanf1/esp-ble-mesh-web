@@ -165,6 +165,13 @@ const reverseStringInPlace = (str: string) => {
   return [...str].reverse().join("");
 };
 
+const stringToHex = (str: string): string => {
+  return str
+    .split("")
+    .map((c) => c.charCodeAt(0).toString(16).padStart(2, "0"))
+    .join("");
+};
+
 const utils = {
   hexToBytes,
   bytesToHex,
@@ -182,6 +189,7 @@ const utils = {
   swapHexEndianness,
   splitHexStringChunksOfSizeX: splitHexStringInChunksOfSizeX,
   reverseStringInPlace,
+  stringToHex,
 };
 
 export default utils;
