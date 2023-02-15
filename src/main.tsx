@@ -17,6 +17,8 @@ import Provisioner from "./bluetooth/models/Provisioner";
 import ProxyConfigurationClient from "./bluetooth/models/ProxyConfigurationClient";
 import Dashboard from "./pages/dashboard/Dashboard";
 import Graph from "./pages/graph/Graph";
+import WiFiConfigClient from "./bluetooth/models/WiFiConfigClient";
+import MQTTConfigClient from "./bluetooth/models/MQTTConfigClient";
 
 const meshConfigurationManager = new MeshConfigurationManager({
   meshConfigurationServerUrl: CONFIGURATION_API,
@@ -34,6 +36,8 @@ const proxyConfigurationClient = new ProxyConfigurationClient({
   bluetoothManager,
   meshConfigurationManager,
 });
+const wifiConfigClient = new WiFiConfigClient({ bluetoothManager, meshConfigurationManager });
+const mqttConfigClient = new MQTTConfigClient({ bluetoothManager, meshConfigurationManager });
 
 const router = createBrowserRouter([
   {
@@ -58,6 +62,8 @@ const router = createBrowserRouter([
             BluetoothManager={bluetoothManager}
             MeshConfigurationManager={meshConfigurationManager}
             ConfigClient={configClient}
+            WiFiConfigClient={wifiConfigClient}
+            MQTTConfigClient={mqttConfigClient}
           />
         ),
       },

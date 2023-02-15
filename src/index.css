@@ -34,7 +34,8 @@
   }
 
   select,
-  [type="text"] {
+  [type="text"],
+  [type="password"] {
     @apply focus:ring-primary focus:border-primary;
   }
 
@@ -136,7 +137,8 @@
     @apply cursor-pointer;
   }
 
-  [type="text"] {
+  [type="text"],
+  [type="password"] {
     @apply border-solid border-2 p-2 border-border rounded-lg block;
   }
   input:disabled {

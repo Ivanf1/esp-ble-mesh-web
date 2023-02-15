@@ -6,6 +6,9 @@ import BluetoothManager from "../../../bluetooth/BluetoothManager";
 import MeshConfigurationManager from "../../../bluetooth/MeshConfigurationManager";
 import { modelNameById } from "../../../bluetooth/ModelNameById";
 import ConfigClient from "../../../bluetooth/models/ConfigClient";
+import MQTTConfigClient from "../../../bluetooth/models/MQTTConfigClient";
+import WiFiConfigClient from "../../../bluetooth/models/WiFiConfigClient";
+import WiFiConfigModelSettings from "./WiFiConfigModelSettings";
 
 interface IFormInput {
   appKey: string;
@@ -19,8 +22,16 @@ interface Props {
   BluetoothManager: BluetoothManager;
   MeshConfigurationManager: MeshConfigurationManager;
   ConfigClient: ConfigClient;
+  WiFiConfigClient: WiFiConfigClient;
+  MQTTConfigClient: MQTTConfigClient;
 }
-const ModelSettings = ({ BluetoothManager, MeshConfigurationManager, ConfigClient }: Props) => {
+const ModelSettings = ({
+  BluetoothManager,
+  MeshConfigurationManager,
+  ConfigClient,
+  WiFiConfigClient,
+  MQTTConfigClient,
+}: Props) => {
   const arrow = "<-";
   const navigate = useNavigate();
   const params = useParams<QueryParams>();
@@ -43,6 +54,17 @@ const ModelSettings = ({ BluetoothManager, MeshConfigurationManager, ConfigClien
   const modelNumber = parseInt(params.modelNumber);
   const element = node.elements[elementNumber];
   const model = element.models[modelNumber];
+
+  if (model.modelID == "000102e5") {
+    return (
+      <WiFiConfigModelSettings
+        BluetoothManager={BluetoothManager}
+        MeshConfigurationManager={MeshConfigurationManager}
+        ConfigClient={ConfigClient}
+        WiFiConfigClient={WiFiConfigClient}
+      />
+    );
+  }
 
   const {
     register,

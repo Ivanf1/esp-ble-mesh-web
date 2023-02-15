@@ -19,6 +19,11 @@ enum WiFiConfigFailedReason {
   NO_SEPARATOR = "0003",
   INVALID_PARAMETERS_LENGTH = "0004",
 }
+export interface WiFiConfigClientStatusUpdate {
+  error: boolean;
+  message?: string;
+}
+type StatusUpdateCallback = (status: WiFiConfigClientStatusUpdate) => void;
 interface WiFiConfigClientProps {
   bluetoothManager: BluetoothManager;
   meshConfigurationManager: MeshConfigurationManager;
@@ -33,6 +38,7 @@ class WiFiConfigClient {
   private bluetoothManager: BluetoothManager;
   private meshConfigurationManager: MeshConfigurationManager;
   private PDUBuilder: PDUBuilder;
+  private statusUpdatesCallbacks: Map<string, StatusUpdateCallback>;
 
   constructor(configuration: WiFiConfigClientProps) {
     this.bluetoothManager = configuration.bluetoothManager;
@@ -42,6 +48,15 @@ class WiFiConfigClient {
       MessageType.NETWORK_PDU
     );
     this.PDUBuilder = PDUBuilder.getInstance();
+    this.statusUpdatesCallbacks = new Map();
+  }
+
+  public registerStatusUpdateCallback(id: string, callback: StatusUpdateCallback) {
+    this.statusUpdatesCallbacks.set(id, callback);
+  }
+  public removeStatusUpdateCallback(id: string) {
+    if (!this.statusUpdatesCallbacks.has(id)) return;
+    this.statusUpdatesCallbacks.delete(id);
   }
 
   public sendSetMessage(ssid: string, password: string, dst: string, ttl?: string) {
@@ -90,6 +105,9 @@ class WiFiConfigClient {
           return;
         }
         console.log(`${TAG}: wifi config status ok`);
+        this.statusUpdatesCallbacks.forEach((c) => {
+          c({ error: false });
+        });
     }
   }
 
@@ -116,6 +134,10 @@ class WiFiConfigClient {
       default:
         break;
     }
+
+    this.statusUpdatesCallbacks.forEach((c) => {
+      c({ error: true, message });
+    });
   }
 }
 
