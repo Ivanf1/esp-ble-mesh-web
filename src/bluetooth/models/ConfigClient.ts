@@ -305,7 +305,7 @@ class ConfigClient {
       case OpCode.MODEL_APP_STATUS:
         status = pdu.params.substring(0, 2);
         elementAddress = utils.swapHexEndianness(pdu.params.substring(2, 6));
-        modelId = utils.reverseStringInPlace(pdu.params.substring(9, 13));
+        modelId = utils.swapHexEndianness(pdu.params.substring(10));
         if (status == "00") {
           console.log(`appkey bind successful`);
           this.meshConfigurationManager.addAppKeyModelNodeByAddress(
