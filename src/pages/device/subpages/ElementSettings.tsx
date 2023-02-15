@@ -3,6 +3,7 @@ import { SubmitHandler } from "react-hook-form/dist/types";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import BluetoothManager from "../../../bluetooth/BluetoothManager";
 import MeshConfigurationManager from "../../../bluetooth/MeshConfigurationManager";
+import { modelNameById } from "../../../bluetooth/ModelNameById";
 
 interface IFormInput {
   elementName: string;
@@ -86,7 +87,7 @@ const ElementSettings = ({ BluetoothManager, MeshConfigurationManager }: Props) 
                 </div>
                 {element.models.map((m, i) => (
                   <ModelItem
-                    name={m.modelID}
+                    name={modelNameById.get(m.modelID) ?? m.modelID}
                     ID={m.modelID}
                     onModelSelected={onModelSelected}
                     modelIdx={i}
@@ -110,12 +111,14 @@ interface ModelItemProps {
 }
 const ModelItem = ({ name, ID, modelIdx, onModelSelected }: ModelItemProps) => {
   return (
-    <div className="flex flex-row items-center">
+    <div className="flex flex-row items-center min-h-[51px]">
       <span className="flex-1">{name}</span>
       <span className="flex-1">{ID}</span>
-      <button className="secondary " onClick={() => onModelSelected(modelIdx)}>
-        Configure
-      </button>
+      {ID != "0000" && (
+        <button className="secondary " onClick={() => onModelSelected(modelIdx)}>
+          Configure
+        </button>
+      )}
     </div>
   );
 };

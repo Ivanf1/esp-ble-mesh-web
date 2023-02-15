@@ -1,6 +1,7 @@
 import { SubmitHandler, useForm } from "react-hook-form";
 import { ElementModel, ProvisionedNode } from "../../../bluetooth/meshConfiguration.interface";
 import MeshConfigurationManager from "../../../bluetooth/MeshConfigurationManager";
+import { modelNameById } from "../../../bluetooth/ModelNameById";
 import ConfigClient from "../../../bluetooth/models/ConfigClient";
 
 interface IFormInput {
@@ -124,7 +125,7 @@ const ElementsTableElement = ({
       <span>{unicastAddress}</span>
       <div className="flex flex-col gap-2">
         {models.map((m, i) => (
-          <span key={i}>{m.modelID}</span>
+          <span key={i}>{modelNameById.get(m.modelID) ?? m.modelID}</span>
         ))}
       </div>
       <button className="secondary self-start" onClick={() => onConfigureElementClick(elementIdx)}>

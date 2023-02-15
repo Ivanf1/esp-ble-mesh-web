@@ -4,6 +4,7 @@ import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { Tag, WithContext as ReactTags } from "react-tag-input";
 import BluetoothManager from "../../../bluetooth/BluetoothManager";
 import MeshConfigurationManager from "../../../bluetooth/MeshConfigurationManager";
+import { modelNameById } from "../../../bluetooth/ModelNameById";
 import ConfigClient from "../../../bluetooth/models/ConfigClient";
 
 interface IFormInput {
@@ -131,9 +132,9 @@ const ModelSettings = ({ BluetoothManager, MeshConfigurationManager, ConfigClien
             </span>{" "}
             /{" "}
             <span className="link" onClick={() => navigate(-1)}>
-              Element {" " + elementNumber}
+              {element.name ?? "Element " + elementNumber}
             </span>{" "}
-            / Model {" " + modelNumber}
+            / {modelNameById.get(model.modelID) ?? "Model " + modelNumber}
           </span>
 
           <div className="flex flex-col gap-10">
