@@ -400,7 +400,7 @@ class ConfigClient {
       let vendorModels: string[] = [];
       if (numVendorModels !== 0) {
         vendorModels = utils.splitHexStringChunksOfSizeX(
-          models.substring(0, numVendorModels * 8),
+          models.substring(numSigModels * 4).substring(0, numVendorModels * 8),
           8
         )!;
         vendorModels = vendorModels!.map((m) => utils.swapHexEndianness(m));
