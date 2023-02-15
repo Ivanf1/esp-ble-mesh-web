@@ -8,6 +8,7 @@ import { modelNameById } from "../../../bluetooth/ModelNameById";
 import ConfigClient from "../../../bluetooth/models/ConfigClient";
 import MQTTConfigClient from "../../../bluetooth/models/MQTTConfigClient";
 import WiFiConfigClient from "../../../bluetooth/models/WiFiConfigClient";
+import MQTTConfigModelSettings from "./MQTTConfigModelSettings";
 import WiFiConfigModelSettings from "./WiFiConfigModelSettings";
 
 interface IFormInput {
@@ -62,6 +63,16 @@ const ModelSettings = ({
         MeshConfigurationManager={MeshConfigurationManager}
         ConfigClient={ConfigClient}
         WiFiConfigClient={WiFiConfigClient}
+      />
+    );
+  }
+  if (model.modelID == "000302e5") {
+    return (
+      <MQTTConfigModelSettings
+        BluetoothManager={BluetoothManager}
+        MeshConfigurationManager={MeshConfigurationManager}
+        ConfigClient={ConfigClient}
+        MQTTConfigClient={MQTTConfigClient}
       />
     );
   }
