@@ -18,6 +18,7 @@ interface IFormInput {
 type QueryParams = {
   elementNumber: string;
   modelNumber: string;
+  deviceUnicastAddress: string;
 };
 interface Props {
   BluetoothManager: BluetoothManager;
@@ -37,18 +38,18 @@ const ModelSettings = ({
   const navigate = useNavigate();
   const params = useParams<QueryParams>();
 
-  if (!params.elementNumber || !params.modelNumber) {
-    return <Navigate to="/provisioning" />;
+  if (!params.deviceUnicastAddress || !params.elementNumber || !params.modelNumber) {
+    return <Navigate to="/connect" />;
   }
 
-  const device = BluetoothManager.getDevice();
-  if (!device) {
-    return <Navigate to="/provisioning" />;
-  }
+  // const device = BluetoothManager.getDevice();
+  // if (!device) {
+  //   return <Navigate to="/connect" />;
+  // }
 
-  const node = MeshConfigurationManager.getNodeById(device.id);
+  const node = MeshConfigurationManager.getNodeByUnicastAddress(params.deviceUnicastAddress);
   if (!node) {
-    return <Navigate to="/provisioning" />;
+    return <Navigate to="/connect" />;
   }
 
   const elementNumber = parseInt(params.elementNumber);
@@ -156,12 +157,12 @@ const ModelSettings = ({
   return (
     <div className="min-h-full max-w-7xl mx-auto pt-16">
       <h2 className="mb-16">Settings</h2>
-      <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-10">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 gap-10">
         <div className="flex flex-col gap-10">
           <span>
             {arrow}
             <span className="link" onClick={() => navigate(-2)}>
-              {device.name}
+              {node.name}
             </span>{" "}
             /{" "}
             <span className="link" onClick={() => navigate(-1)}>

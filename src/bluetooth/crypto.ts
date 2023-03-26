@@ -484,7 +484,7 @@ const generateUUID = () => {
   );
 };
 
-const generatePublicPrivateKeyPair = async () => {
+const generatePublicPrivateKeyPair = async (): Promise<CryptoKeyPair> => {
   const key = await window.crypto.subtle.generateKey(
     {
       name: "ECDH",

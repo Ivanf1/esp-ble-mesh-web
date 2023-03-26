@@ -37,17 +37,17 @@ const MQTTConfigModelSettings = ({
   const params = useParams<QueryParams>();
 
   if (!params.elementNumber || !params.modelNumber) {
-    return <Navigate to="/provisioning" />;
+    return <Navigate to="/connect" />;
   }
 
   const device = BluetoothManager.getDevice();
   if (!device) {
-    return <Navigate to="/provisioning" />;
+    return <Navigate to="/connect" />;
   }
 
   const node = MeshConfigurationManager.getNodeById(device.id);
   if (!node) {
-    return <Navigate to="/provisioning" />;
+    return <Navigate to="/connect" />;
   }
 
   const elementNumber = parseInt(params.elementNumber);
@@ -101,7 +101,7 @@ const MQTTConfigModelSettings = ({
   return (
     <div className="min-h-full max-w-7xl mx-auto pt-16">
       <h2 className="mb-16">Settings</h2>
-      <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-10">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 gap-10">
         <div className="flex flex-col gap-10">
           <span>
             {arrow}

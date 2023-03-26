@@ -149,6 +149,22 @@
     padding: 0;
     margin: 0;
   }
+
+  .centered-axis-x {
+    position: absolute;
+    left: 50%;
+    transform: translate(-50%, 0);
+  }
+  .centered-axis-xy {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .overlay {
+    background-color: #8c8c8fad;
+  }
 }
 
 .ReactTags__tags {

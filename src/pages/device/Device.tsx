@@ -1,6 +1,7 @@
 import { useEffect } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
 import BluetoothManager from "../../bluetooth/BluetoothManager";
+import { ProvisionedNode } from "../../bluetooth/meshConfiguration.interface";
 import MeshConfigurationManager from "../../bluetooth/MeshConfigurationManager";
 import ConfigClient, { ConfigClientStatusUpdate } from "../../bluetooth/models/ConfigClient";
 import DeviceSettings from "./components/DeviceSettings";
@@ -12,13 +13,31 @@ interface Props {
 }
 const Settings = ({ BluetoothManager, ConfigClient, MeshConfigurationManager }: Props) => {
   const navigate = useNavigate();
-  const device = BluetoothManager.getDevice();
+  const params = useParams();
+  let device: BluetoothDevice | ProvisionedNode | null | undefined = BluetoothManager.getDevice();
+  if (!params.deviceUnicastAddress && !device) {
+    return <Navigate to="/connect" />;
+  }
 
   if (!device) {
-    return <Navigate to="/provisioning" />;
+    return <Navigate to="/connect" />;
+  }
+
+  // not device and address
+  // device and address
+  if ((device && params.deviceUnicastAddress) || (!device && params.deviceUnicastAddress)) {
+    device = MeshConfigurationManager.getNodeByUnicastAddress(params.deviceUnicastAddress);
+  }
+
+  if (!device) {
+    return <Navigate to="/connect" />;
   }
 
   const node = MeshConfigurationManager.getNodeById(device.id);
+
+  if (!node) {
+    return <Navigate to="/connect" />;
+  }
 
   // const handleConfigClientUpdate = (status: ConfigClientStatusUpdate) => {
   //   console.log(status);
@@ -33,7 +52,7 @@ const Settings = ({ BluetoothManager, ConfigClient, MeshConfigurationManager }: 
   // ConfigClient.getCompositionData(BluetoothManager.getDevice()!.id);
 
   const onElementSelected = (elementNumber: number) => {
-    navigate(`element/${elementNumber}`);
+    navigate(`${node.unicastAddress}/element/${elementNumber}`);
   };
 
   return (

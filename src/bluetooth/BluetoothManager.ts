@@ -67,7 +67,11 @@ class BluetoothManager {
     if (!serviceAndCharacteristicsUUID) return;
 
     const options: RequestDeviceOptions = {
-      filters: [{ services: [serviceAndCharacteristicsUUID.service] }],
+      filters: [
+        {
+          services: [serviceAndCharacteristicsUUID.service],
+        },
+      ],
     };
 
     try {
@@ -77,6 +81,7 @@ class BluetoothManager {
       console.log(`${TAG}: device: ` + device);
       console.log(`${TAG}: name: ${device.name}`);
       console.log(`${TAG}: id: ${device.id}`);
+      console.log(device);
 
       const server = await this.doConnect(device);
       if (!server) return false;

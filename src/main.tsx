@@ -4,7 +4,7 @@ import "./index.css";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { CONFIGURATION_API } from "./constants/bluetooth";
 import Device from "./pages/device/Device";
-import Provisioning from "./pages/provisioning/Provisioning";
+import Connect from "./pages/connect/Connect";
 import ErrorPage from "./pages/error/ErrorPage";
 import ElementSettings from "./pages/device/subpages/ElementSettings";
 import ModelSettings from "./pages/device/subpages/ModelSettings";
@@ -56,7 +56,7 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: "device/element/:elementNumber/model/:modelNumber",
+        path: "device/:deviceUnicastAddress/element/:elementNumber/model/:modelNumber",
         element: (
           <ModelSettings
             BluetoothManager={bluetoothManager}
@@ -68,7 +68,7 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: "device/element/:elementNumber",
+        path: "device/:deviceUnicastAddress/element/:elementNumber",
         element: (
           <ElementSettings
             BluetoothManager={bluetoothManager}
@@ -77,7 +77,7 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: "device",
+        path: "device/:deviceUnicastAddress",
         element: (
           <Device
             BluetoothManager={bluetoothManager}
@@ -87,9 +87,19 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: "provisioning",
+        path: "device/",
         element: (
-          <Provisioning
+          <Device
+            BluetoothManager={bluetoothManager}
+            ConfigClient={configClient}
+            MeshConfigurationManager={meshConfigurationManager}
+          />
+        ),
+      },
+      {
+        path: "connect",
+        element: (
+          <Connect
             BluetoothManager={bluetoothManager}
             Provisioner={provisioner}
             ConfigClient={configClient}
@@ -102,7 +112,12 @@ const router = createBrowserRouter([
       },
       {
         path: "graph",
-        element: <Graph MeshConfigurationManager={meshConfigurationManager} />,
+        element: (
+          <Graph
+            MeshConfigurationManager={meshConfigurationManager}
+            GenericOnOffClient={onOffClient}
+          />
+        ),
       },
     ],
   },

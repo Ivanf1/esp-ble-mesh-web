@@ -16,14 +16,21 @@ const ElementSettings = ({ BluetoothManager, MeshConfigurationManager }: Props) 
   const navigate = useNavigate();
   const params = useParams();
 
-  const device = BluetoothManager.getDevice();
-  if (!device || !params.elementNumber) {
-    return <Navigate to="/provisioning" />;
+  // let device: BluetoothDevice | ProvisionedNode | null | undefined = BluetoothManager.getDevice();
+  if (!params.deviceUnicastAddress || !params.elementNumber) {
+    return <Navigate to="/connect" />;
   }
 
-  const node = MeshConfigurationManager.getNodeById(device.id);
+  // if (params.deviceUnicastAddress) {
+  const node = MeshConfigurationManager.getNodeByUnicastAddress(params.deviceUnicastAddress);
+  // }
+  // if (!device) {
+  //   return <Navigate to="/connect" />;
+  // }
+
+  // const node = MeshConfigurationManager.getNodeById(device.id);
   if (!node) {
-    return <Navigate to="/provisioning" />;
+    return <Navigate to="/connect" />;
   }
 
   const {
@@ -52,7 +59,7 @@ const ElementSettings = ({ BluetoothManager, MeshConfigurationManager }: Props) 
   return (
     <div className="min-h-full max-w-7xl mx-auto pt-16">
       <h2 className="mb-16">Settings</h2>
-      <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-10">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 gap-10">
         <div className="flex flex-col gap-10">
           <span>
             {arrow}

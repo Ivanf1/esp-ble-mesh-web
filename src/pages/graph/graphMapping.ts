@@ -24,7 +24,14 @@ export const meshToGraph = (meshConfigurationManager: MeshConfigurationManager) 
     });
     const subs = meshConfigurationManager.getSubscribersForGroup(g.address);
     subs.forEach((sub) => {
-      links.push({ source: sub.unicastAddress, target: g.address, type: "sub" } as Link);
+      const pubsub = links.find(
+        (link) => link.source === sub.unicastAddress && link.target === g.address
+      );
+      links.push({
+        source: sub.unicastAddress,
+        target: g.address,
+        type: pubsub ? "pubsub" : "sub",
+      } as Link);
     });
   });
 

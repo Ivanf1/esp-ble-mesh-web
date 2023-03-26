@@ -10,7 +10,7 @@ interface Props {
   Provisioner: Provisioner;
   ConfigClient: ConfigClient;
 }
-const Provisioning = ({ BluetoothManager, Provisioner, ConfigClient }: Props) => {
+const Connect = ({ BluetoothManager, Provisioner, ConfigClient }: Props) => {
   const [isProvisioning, setIsProvisioning] = useState<boolean>(false);
   const [isProxyConnection, setIsProxyConnection] = useState<boolean>(false);
   const [provisioningStatus, setProvisioningStatus] = useState<number>(0);
@@ -61,7 +61,7 @@ const Provisioning = ({ BluetoothManager, Provisioner, ConfigClient }: Props) =>
     <div className="min-h-full max-w-7xl mx-auto pt-16">
       <h2 className="mb-16">Connect</h2>
       {BluetoothManager.getDevice() ? (
-        <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-10">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 gap-10">
           <div>
             <h5 className="mb-3">Connected Device</h5>
             <div className="p-5 rounded-t-lg border-solid border-2 border-border">
@@ -79,7 +79,7 @@ const Provisioning = ({ BluetoothManager, Provisioner, ConfigClient }: Props) =>
                     <span>Device is being provisioned...</span>
                     <ProgressBar completed={provisioningStatus} total={100} showLabel={true} />
                     <button className="cancel ml-auto mt-5" onClick={onAbortClick}>
-                      Abort
+                      Cancel
                     </button>
                   </>
                 )
@@ -108,11 +108,11 @@ const ConnectionPanel = ({ onConnectClick, onProvisionClick }: ConnectionPanelPr
   return (
     <div className="mx-auto">
       <div className="py-24 rounded-lg border-solid border-2 border-border flex flex-col items-center gap-10">
-        <ConnectSVG />
+        <ConnectSVG className="ml-5" />
         <h4>Connect to a device</h4>
         <div className="min-w-full grid grid-cols-[1fr_auto_1fr] mt-12">
           <div className="flex flex-col items-center gap-4 py-6">
-            <span className="text-center">Connect to an already provisioned Proxy Server</span>
+            <span className="text-center">Connect to a mesh node</span>
             <button className="primary mx-auto" onClick={onConnectClick}>
               Connect
             </button>
@@ -130,4 +130,4 @@ const ConnectionPanel = ({ onConnectClick, onProvisionClick }: ConnectionPanelPr
   );
 };
 
-export default Provisioning;
+export default Connect;

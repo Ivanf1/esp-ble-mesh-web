@@ -148,8 +148,15 @@ class Provisioner {
   }
 
   private makeInviteMessage(): string {
+    // Indicates the duration for which the device will attract the attention of the user.
+    // In this case, the duration is 0 seconds, meaning that the Provisioner didn’t need
+    // the new device to make itself known to the user.
     const attentionDuration = "00";
+
+    // store the attention duration for future use.
     this.confirmationMessageFields.provisioningInvitePDUValue = attentionDuration;
+
+    // build the Proxy PDU.
     return this.PDUBuilder.finalizeProxyPDU(
       ProvisioningType.INVITE + attentionDuration,
       MessageType.PROVISIONING
@@ -161,17 +168,17 @@ class Provisioner {
    */
   private makeStartMessage() {
     // No OOB authentication is used.
-    // Refer to Mesh Specification Profile 5.4.1.3 table 5.28.
+    // Refer to Mesh Profile Specification 5.4.1.3 table 5.28.
     const authenticationMethod = "00";
 
-    // Blink. Even if we do not use an authentication method we
-    // have to specify this field.
-    // Refer to Mesh Specification Profile 5.4.1.3 table 5.29.
+    // Blink. Even if no authentication method is used
+    // this field needs to be specified.
+    // Refer to Mesh Profile Specification 5.4.1.3 table 5.29.
     const authenticationAction = "00";
 
-    // Even if we do not use an authentication method we
-    // have to specify this field.
-    // Refer to Mesh Specification Profile 5.4.1.3 table 5.30.
+    // Even if no authentication method is used
+    // this field needs to be specified.
+    // Refer to Mesh Profile Specification 5.4.1.3 table 5.30.
     const authenticationSize = "00";
 
     const data =

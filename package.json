@@ -15,6 +15,7 @@
     "asmcrypto.js": "^2.3.2",
     "big-integer": "^1.6.51",
     "framer-motion": "^8.5.0",
+    "paho-mqtt": "^1.1.0",
     "react": "^18.2.0",
     "react-dnd": "^16.0.1",
     "react-dnd-html5-backend": "^16.0.1",
@@ -28,6 +29,7 @@
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.3",
     "@types/node": "^18.11.11",
+    "@types/paho-mqtt": "^1.0.6",
     "@types/react": "^18.0.24",
     "@types/react-dom": "^18.0.8",
     "@types/react-tag-input": "^6.6.1",

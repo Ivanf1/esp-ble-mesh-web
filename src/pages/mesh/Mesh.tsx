@@ -37,9 +37,14 @@ const Mesh = ({ MeshConfigurationManager }: Props) => {
   return (
     <div className="min-h-full max-w-7xl mx-auto pt-16">
       <h2 className="mb-16">Mesh</h2>
-      <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-10">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 gap-10">
         <div className="flex flex-col gap-10">
-          <h5>Mesh settings</h5>
+          <div className="flex flex-row">
+            <h5>Mesh settings</h5>
+            <button className="secondary ml-auto" onClick={onCreateGroupClick}>
+              Export configuration
+            </button>
+          </div>
           <div className="flex flex-col gap-10">
             <div className="flex flex-col gap-2">
               <label>Network Key</label>
